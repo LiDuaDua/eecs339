@@ -1,0 +1,26 @@
+/*
+ * This file shamelessly stolen and modified by Peter Dinda from
+ * the original, which is:
+ *
+ *
+ * Fabian E. Bustamante
+ * Northwestern Systems Research Group
+ * Department of Computer Science
+ * Northwestern University
+ *
+ * (C) Copyright 2003, Northwestern University, all rights reserved.
+ *
+ */
+div.ribbonwide { font-size: xx-small;
+     font-weight: bold;
+     text-align: center;
+     width: 100%;
+   }
+
+div.ribbon { margin-left: auto;
+ margin-right: auto;
+}
+
+#map{
+  height: 400px;
+}
