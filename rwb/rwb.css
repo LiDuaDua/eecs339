@@ -11,6 +11,16 @@
  * (C) Copyright 2003, Northwestern University, all rights reserved.
  *
  */
+
+input{
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+
+form{
+	margin-bottom: 0;
+}
+
 div.ribbonwide { font-size: xx-small;
      font-weight: bold;
      text-align: center;

@@ -77,11 +77,14 @@ use Time::ParseDate;
 use HTML::Template;
 my $template = HTML::Template->new(filename => 'rwb.html');
 
+# Using JSON because RAW is stupid
+#use JSON;
+
 #
 # You need to override these for access to your database
 #
-my $dbuser="CHANGEME";
-my $dbpasswd="CHANGEME";
+my $dbuser="bsr618";
+my $dbpasswd="zf8pO0pRn";
 
 
 #
@@ -125,32 +128,32 @@ my $run;
 
 
 if (defined(param("act"))) {
-  $action=param("act");
-  if (defined(param("run"))) {
-    $run = param("run") == 1;
-  } else {
-    $run = 0;
-  }
+	$action=param("act");
+	if (defined(param("run"))) {
+		$run = param("run") == 1;
+	} else {
+		$run = 0;
+	}
 } else {
-  $action="base";
-  $run = 1;
+	$action="base";
+	$run = 1;
 }
 
 my $dstr;
 
 if (defined(param("debug"))) {
-  # parameter has priority over cookie
-  if (param("debug") == 0) {
-    $debug = 0;
-  } else {
-    $debug = 1;
-  }
+	# parameter has priority over cookie
+	if (param("debug") == 0) {
+		$debug = 0;
+	} else {
+		$debug = 1;
+	}
 } else {
-  if (defined($inputdebugcookiecontent)) {
-    $debug = $inputdebugcookiecontent;
-  } else {
-    # debug default from script
-  }
+	if (defined($inputdebugcookiecontent)) {
+		$debug = $inputdebugcookiecontent;
+	} else {
+		# debug default from script
+	}
 }
 
 $outputdebugcookiecontent=$debug;
@@ -161,12 +164,12 @@ $outputdebugcookiecontent=$debug;
 #
 #
 if (defined($inputcookiecontent)) {
-  # Has cookie, let's decode it
-  ($user,$password) = split(/\//,$inputcookiecontent);
-  $outputcookiecontent = $inputcookiecontent;
+	# Has cookie, let's decode it
+	($user,$password) = split(/\//,$inputcookiecontent);
+	$outputcookiecontent = $inputcookiecontent;
 } else {
-  # No cookie, treat as anonymous user
-  ($user,$password) = ("anon","anonanon");
+	# No cookie, treat as anonymous user
+	($user,$password) = ("anon","anonanon");
 }
 
 #
@@ -174,38 +177,38 @@ if (defined($inputcookiecontent)) {
 # Ignore cookies in this case.
 #
 if ($action eq "login") {
-  if ($run) {
-    #
-    # Login attempt
-    #
-    # Ignore any input cookie.  Just validate user and
-    # generate the right output cookie, if any.
-    #
-    ($user,$password) = (param('user'),param('password'));
-    if (ValidUser($user,$password)) {
-      # if the user's info is OK, then give him a cookie
-      # that contains his username and password
-      # the cookie will expire in one hour, forcing him to log in again
-      # after one hour of inactivity.
-      # Also, land him in the base query screen
-      $outputcookiecontent=join("/",$user,$password);
-      $action = "base";
-      $run = 1;
-    } else {
-      # uh oh.  Bogus login attempt.  Make him try again.
-      # don't give him a cookie
-      $logincomplain=1;
-      $action="login";
-      $run = 0;
-    }
-  } else {
-    #
-    # Just a login screen request, but we should toss out any cookie
-    # we were given
-    #
-    undef $inputcookiecontent;
-    ($user,$password)=("anon","anonanon");
-  }
+	if ($run) {
+		#
+		# Login attempt
+		#
+		# Ignore any input cookie.  Just validate user and
+		# generate the right output cookie, if any.
+		#
+		($user,$password) = (param('user'),param('password'));
+		if (ValidUser($user,$password)) {
+			# if the user's info is OK, then give him a cookie
+			# that contains his username and password
+			# the cookie will expire in one hour, forcing him to log in again
+			# after one hour of inactivity.
+			# Also, land him in the base query screen
+			$outputcookiecontent=join("/",$user,$password);
+			$action = "base";
+			$run = 1;
+		} else {
+			# uh oh.  Bogus login attempt.  Make him try again.
+			# don't give him a cookie
+			$logincomplain=1;
+			$action="base";
+			$run = 1;
+		}
+	} else {
+		#
+		# Just a login screen request, but we should toss out any cookie
+		# we were given
+		#
+		undef $inputcookiecontent;
+		($user,$password)=("anon","anonanon");
+	}
 }
 
 
@@ -214,11 +217,11 @@ if ($action eq "login") {
 # we have a cookie, we should delete it.
 #
 if ($action eq "logout") {
-  $deletecookie=1;
-  $action = "base";
-  $user = "anon";
-  $password = "anonanon";
-  $run = 1;
+	$deletecookie=1;
+	$action = "base";
+	$user = "anon";
+	$password = "anonanon";
+	$run = 1;
 }
 
 
@@ -233,19 +236,19 @@ my @outputcookies;
 # that the browsers won't cache it.
 #
 if (defined($outputcookiecontent)) {
-  my $cookie=cookie(-name=>$cookiename,
-		    -value=>$outputcookiecontent,
-		    -expires=>($deletecookie ? '-1h' : '+1h'));
-  push @outputcookies, $cookie;
+	my $cookie=cookie(-name=>$cookiename,
+		-value=>$outputcookiecontent,
+		-expires=>($deletecookie ? '-1h' : '+1h'));
+	push @outputcookies, $cookie;
 }
 #
 # We also send back a debug cookie
 #
 #
 if (defined($outputdebugcookiecontent)) {
-  my $cookie=cookie(-name=>$debugcookiename,
-		    -value=>$outputdebugcookiecontent);
-  push @outputcookies, $cookie;
+	my $cookie=cookie(-name=>$debugcookiename,
+		-value=>$outputdebugcookiecontent);
+	push @outputcookies, $cookie;
 }
 
 #
@@ -270,44 +273,100 @@ print header(-expires=>'now', -cookie=>\@outputcookies);
 #
 #
 #
+if ($action eq "base") {
+	if ($debug) {
+		# visible if we are debugging
+		$template->param("DEBUG_DISPLAY" => "block");
+	} else {
+		# invisible otherwise
+		$template->param("DEBUG_DISPLAY" => "none");
+	}
 
-  if ($debug) {
-    # visible if we are debugging
-    $template->param("DATA_DISPLAY" => "block");
-  } else {
-    # invisible otherwise
-    $template->param("DATA_DISPLAY" => "none");
-  }
+	if ($user eq "anon"){
+		$template->param("STATUS" => 'Login');
+		$template->param("DROPDOWN" => '<form role="form">
+							<div class="col-lg-12">
+								<input type="text" class="form-control" name="user" placeholder="Username" />
+								<input type="password" name="password" class="form-control" placeholder="Password" required="required" title="">
+							</div>
+							<input name="act" value="login" style="display: none;">
+							<input name="run" value="1" style="display: none;">
+							<div class="col-md-12 text-right">
+								<button class="btn btn-primary" type="submit">Login</button>
+							</div>
+						</form>')
+	} else {
+		$template->param("STATUS" => $user);
 
-  print "<!DOCTYPE HTML>", $template->output;
+		my $status_tmp = '';
+		if (UserCan($user,"give-opinion-data")) {
+			$status_tmp .= '<li><a href="#give-opinion-data" data-toggle="modal">Give Opinion Of Current Location</a></li>'."\n";
+		}
+		if (UserCan($user,"give-cs-ind-data")) {
+			$status_tmp .= '<li><a href="#give-cs-ind-data" data-toggle="modal">Geolocate Individual Contributors</a></li>'."\n";
+		}
+		if (UserCan($user,"manage-users") || UserCan($user,"invite-users")) {
+			$status_tmp .= '<li><a href="#invite-user" data-toggle="modal">Invite User</a></li>'."\n";
+		}
+		if (UserCan($user,"manage-users") || UserCan($user,"add-users")) {
+			$status_tmp .= '<li><a href="#add-user" data-toggle="modal">Add User</a></li>'."\n";
+		}
+		if (UserCan($user,"manage-users")) {
+			$status_tmp .= '<li><a href="#delete-user" data-toggle="modal">Delete User</a></li>'."\n";
+			$status_tmp .= '<li><a href="#add-perm-user" data-toggle="modal">Add User Permission</a></li>'."\n";
+			$status_tmp .= '<li><a href="#revoke-perm-user" data-toggle="modal">Revoke User Permission</a></li>'."\n";
 
-  #
-  # User mods
-  #
-  #
-  if ($user eq "anon") {
-    print "<p>You are anonymous, but you can also <a href=\"rwb.pl?act=login\">login</a></p>";
-  } else {
-    print "<p>You are logged in as $user and can do the following:</p>";
-    if (UserCan($user,"give-opinion-data")) {
-      print "<p><a href=\"rwb.pl?act=give-opinion-data\">Give Opinion Of Current Location</a></p>";
-    }
-    if (UserCan($user,"give-cs-ind-data")) {
-      print "<p><a href=\"rwb.pl?act=give-cs-ind-data\">Geolocate Individual Contributors</a></p>";
-    }
-    if (UserCan($user,"manage-users") || UserCan($user,"invite-users")) {
-      print "<p><a href=\"rwb.pl?act=invite-user\">Invite User</a></p>";
-    }
-    if (UserCan($user,"manage-users") || UserCan($user,"add-users")) {
-      print "<p><a href=\"rwb.pl?act=add-user\">Add User</a></p>";
-    }
-    if (UserCan($user,"manage-users")) {
-      print "<p><a href=\"rwb.pl?act=delete-user\">Delete User</a></p>";
-      print "<p><a href=\"rwb.pl?act=add-perm-user\">Add User Permission</a></p>";
-      print "<p><a href=\"rwb.pl?act=revoke-perm-user\">Revoke User Permission</a></p>";
-    }
-    print "<p><a href=\"rwb.pl?act=logout&run=1\">Logout</a></p>";
-  }
+			my ($table,$error);
+			($table,$error)=PermTable();
+			if (!$error) {
+				$table = "<h2>Available Permissions</h2>$table";
+			}
+
+			my $inputs = '<input type="text" class="form-control" name="name" placeholder="Name" />
+						<input type="text" class="form-control" name="permission" placeholder="Permission" />';
+
+			my $out = MakeModal("Add User Permission","add-perm-user",$inputs) . $table;
+
+			$template->param("ADD-PERM-USER" => $out);
+
+			#$out = MakeModal("Revoke User Permission","revoke-perm-user",$inputs);
+
+			#$template->param("REVOKE-PERM-USER" => $out.$table);
+		}
+		$status_tmp .= '<li><a href="rwb.pl?act=logout&run=1">Logout</a></li>';
+
+		$template->param("DROPDOWN" => $status_tmp);
+	}
+
+	print "<!DOCTYPE HTML>", $template->output;
+}
+
+sub MakeModal {
+	my ($title,$act,$inputs) = @_;
+
+	return '<div id="'.$act.'" class="modal fade">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+						<h4 class="modal-title">'.$title.'</h4>
+					</div>
+					<div class="modal-body">
+						<form role="form">
+							<div class="col-lg-12">
+								'.$inputs.'
+							</div>
+							<input type="text" name="run" value="1" style="display: none;" />
+							<input type="text" name="act" value="'.$act.'" style="display: none;" />
+							<div class="col-md-12 text-right">
+								<button class="btn btn-primary" type="submit">Submit</button>
+							</div>
+						</form>
+					</div>
+				</div><!-- /.modal-content -->
+			</div><!-- /.modal-dialog -->
+		</div><!-- /.modal -->'
+}
 
 #
 #
@@ -325,81 +384,81 @@ print header(-expires=>'now', -cookie=>\@outputcookies);
 #
 #
 if ($action eq "near") {
-  my $latne = param("latne");
-  my $longne = param("longne");
-  my $latsw = param("latsw");
-  my $longsw = param("longsw");
-  my $whatparam = param("what");
-  my $format = param("format");
-  my $cycle = param("cycle");
-  my %what;
+	my $latne = param("latne");
+	my $longne = param("longne");
+	my $latsw = param("latsw");
+	my $longsw = param("longsw");
+	my $whatparam = param("what");
+	my $format = param("format");
+	my $cycle = param("cycle");
+	my %what;
 
-  $format = "table" if !defined($format);
-  $cycle = "1112" if !defined($cycle);
+	$format = "table" if !defined($format);
+	$cycle = "1112" if !defined($cycle);
 
-  if (!defined($whatparam) || $whatparam eq "all") {
-    %what = ( committees => 1,
-	      candidates => 1,
-	      individuals =>1,
-	      opinions => 1);
-  } else {
-    map {$what{$_}=1} split(/\s*,\s*/,$whatparam);
-  }
+	if (!defined($whatparam) || $whatparam eq "all") {
+		%what = ( committees => 1,
+			candidates => 1,
+			individuals =>1,
+			opinions => 1);
+	} else {
+		map {$what{$_}=1} split(/\s*,\s*/,$whatparam);
+	}
 
 
-  if ($what{committees}) {
-    my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
-    if (!$error) {
-      if ($format eq "table") {
-	print "<h2>Nearby committees</h2>$str";
-      } else {
-	print $str;
-      }
-    }
-  }
-  if ($what{candidates}) {
-    my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cycle,$format);
-    if (!$error) {
-      if ($format eq "table") {
-	print "<h2>Nearby candidates</h2>$str";
-      } else {
-	print $str;
-      }
-    }
-  }
-  if ($what{individuals}) {
-    my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cycle,$format);
-    if (!$error) {
-      if ($format eq "table") {
-	print "<h2>Nearby individuals</h2>$str";
-      } else {
-	print $str;
-      }
-    }
-  }
-  if ($what{opinions}) {
-    my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cycle,$format);
-    if (!$error) {
-      if ($format eq "table") {
-	print "<h2>Nearby opinions</h2>$str";
-      } else {
-	print $str;
-      }
-    }
-  }
+	if ($what{committees}) {
+		my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
+		if (!$error) {
+			if ($format eq "table") {
+				print "<h2>Nearby committees</h2>$str";
+			} else {
+				print $str;
+			}
+		}
+	}
+	if ($what{candidates}) {
+		my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cycle,$format);
+		if (!$error) {
+			if ($format eq "table") {
+				print "<h2>Nearby candidates</h2>$str";
+			} else {
+				print $str;
+			}
+		}
+	}
+	if ($what{individuals}) {
+		my ($str,$error) = Individuals($latne,$longne,$latsw,$longsw,$cycle,$format);
+		if (!$error) {
+			if ($format eq "table") {
+				print "<h2>Nearby individuals</h2>$str";
+			} else {
+				print $str;
+			}
+		}
+	}
+	if ($what{opinions}) {
+		my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cycle,$format);
+		if (!$error) {
+			if ($format eq "table") {
+				print "<h2>Nearby opinions</h2>$str";
+			} else {
+				print $str;
+			}
+		}
+	}
 }
 
 
 if ($action eq "invite-user") {
-  print h2("Invite User Functionality Is Unimplemented");
+	print h2("Invite User Functionality Is Unimplemented");
 }
 
 if ($action eq "give-opinion-data") {
-  print h2("Giving Location Opinion Data Is Unimplemented");
+	print h2("Giving Location Opinion Data Is Unimplemented");
 }
 
 if ($action eq "give-cs-ind-data") {
-  print h2("Giving Crowd-sourced Individual Geolocations Is Unimplemented");
+	print h2("Giving Crowd-sourced Individual Geolocations Is Unimplemented");
 }
 
 #
@@ -411,37 +470,36 @@ if ($action eq "give-cs-ind-data") {
 #
 #
 if ($action eq "add-user") {
-  if (!UserCan($user,"add-users") && !UserCan($user,"manage-users")) {
-    print h2('You do not have the required permissions to add users.');
-  } else {
-    if (!$run) {
-      print start_form(-name=>'AddUser'),
-	h2('Add User'),
-	  "Name: ", textfield(-name=>'name'),
-	    p,
-	      "Email: ", textfield(-name=>'email'),
-		p,
-		  "Password: ", textfield(-name=>'password'),
-		    p,
-		      hidden(-name=>'run',-default=>['1']),
+	if (!UserCan($user,"add-users") && !UserCan($user,"manage-users")) {
+		print h2('You do not have the required permissions to add users.');
+	} else {
+		if (!$run) {
+			print start_form(-name=>'AddUser'),
+			h2('Add User'),
+			"Name: ", textfield(-name=>'name'),
+			p,
+			"Email: ", textfield(-name=>'email'),
+			p,
+			"Password: ", textfield(-name=>'password'),
+			p,
+			hidden(-name=>'run',-default=>['1']),
 			hidden(-name=>'act',-default=>['add-user']),
-			  submit,
-			    end_form,
-			      hr;
-    } else {
-      my $name=param('name');
-      my $email=param('email');
-      my $password=param('password');
-      my $error;
-      $error=UserAdd($name,$password,$email,$user);
-      if ($error) {
-	print "Can't add user because: $error";
-      } else {
-	print "Added user $name $email as referred by $user\n";
-      }
-    }
-  }
-  print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+			submit,
+			end_form,
+			hr;
+		} else {
+			my $name=param('name');
+			my $email=param('email');
+			my $password=param('password');
+			my $error;
+			$error=UserAdd($name,$password,$email,$user);
+			if ($error) {
+				print "Can't add user because: $error";
+			} else {
+				print "Added user $name $email as referred by $user\n";
+			}
+		}
+	}
 }
 
 #
@@ -453,34 +511,34 @@ if ($action eq "add-user") {
 #
 #
 if ($action eq "delete-user") {
-  if (!UserCan($user,"manage-users")) {
-    print h2('You do not have the required permissions to delete users.');
-  } else {
-    if (!$run) {
-      #
-      # Generate the add form.
-      #
-      print start_form(-name=>'DeleteUser'),
-	h2('Delete User'),
-	  "Name: ", textfield(-name=>'name'),
-	    p,
-	      hidden(-name=>'run',-default=>['1']),
+	if (!UserCan($user,"manage-users")) {
+		print h2('You do not have the required permissions to delete users.');
+	} else {
+		if (!$run) {
+		#
+		# Generate the add form.
+		#
+		print start_form(-name=>'DeleteUser'),
+		h2('Delete User'),
+		"Name: ", textfield(-name=>'name'),
+		p,
+		hidden(-name=>'run',-default=>['1']),
 		hidden(-name=>'act',-default=>['delete-user']),
-		  submit,
-		    end_form,
-		      hr;
-    } else {
-      my $name=param('name');
-      my $error;
-      $error=UserDelete($name);
-      if ($error) {
-	print "Can't delete user because: $error";
-      } else {
-	print "Deleted user $name\n";
-      }
-    }
-  }
-  print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+		submit,
+		end_form,
+		hr;
+		} else {
+			my $name=param('name');
+			my $error;
+			$error=UserDelete($name);
+			if ($error) {
+				print "Can't delete user because: $error";
+			} else {
+				print "Deleted user $name\n";
+			}
+		}
+	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
 
@@ -493,40 +551,40 @@ if ($action eq "delete-user") {
 #
 #
 if ($action eq "add-perm-user") {
-  if (!UserCan($user,"manage-users")) {
-    print h2('You do not have the required permissions to manage user permissions.');
-  } else {
-    if (!$run) {
-      #
-      # Generate the add form.
-      #
-      print start_form(-name=>'AddUserPerm'),
-	h2('Add User Permission'),
-	  "Name: ", textfield(-name=>'name'),
-	    "Permission: ", textfield(-name=>'permission'),
-	      p,
-		hidden(-name=>'run',-default=>['1']),
-		  hidden(-name=>'act',-default=>['add-perm-user']),
-		  submit,
-		    end_form,
-		      hr;
-      my ($table,$error);
-      ($table,$error)=PermTable();
-      if (!$error) {
-	print "<h2>Available Permissions</h2>$table";
-      }
-    } else {
-      my $name=param('name');
-      my $perm=param('permission');
-      my $error=GiveUserPerm($name,$perm);
-      if ($error) {
-	print "Can't add permission to user because: $error";
-      } else {
-	print "Gave user $name permission $perm\n";
-      }
-    }
-  }
-  print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+	if (!UserCan($user,"manage-users")) {
+		print h2('You do not have the required permissions to manage user permissions.');
+	} else {
+		if (!$run) {
+			#
+			# Generate the add form.
+			#
+			print start_form(-name=>'AddUserPerm'),
+			h2('Add User Permission'),
+			"Name: ", textfield(-name=>'name'),
+			"Permission: ", textfield(-name=>'permission'),
+			p,
+			hidden(-name=>'run',-default=>['1']),
+			hidden(-name=>'act',-default=>['add-perm-user']),
+			submit,
+			end_form,
+			hr;
+			my ($table,$error);
+			($table,$error)=PermTable();
+			if (!$error) {
+				print "<h2>Available Permissions</h2>$table";
+			}
+		} else {
+			my $name=param('name');
+			my $perm=param('permission');
+			my $error=GiveUserPerm($name,$perm);
+			if ($error) {
+				print "Can't add permission to user because: $error";
+			} else {
+				print "Gave user $name permission $perm\n";
+			}
+		}
+	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
 
@@ -539,78 +597,65 @@ if ($action eq "add-perm-user") {
 #
 #
 if ($action eq "revoke-perm-user") {
-  if (!UserCan($user,"manage-users")) {
-    print h2('You do not have the required permissions to manage user permissions.');
-  } else {
-    if (!$run) {
-      #
-      # Generate the add form.
-      #
-      print start_form(-name=>'RevokeUserPerm'),
-	h2('Revoke User Permission'),
-	  "Name: ", textfield(-name=>'name'),
-	    "Permission: ", textfield(-name=>'permission'),
-	      p,
-		hidden(-name=>'run',-default=>['1']),
-		  hidden(-name=>'act',-default=>['revoke-perm-user']),
-		  submit,
-		    end_form,
-		      hr;
-      my ($table,$error);
-      ($table,$error)=PermTable();
-      if (!$error) {
-	print "<h2>Available Permissions</h2>$table";
-      }
-    } else {
-      my $name=param('name');
-      my $perm=param('permission');
-      my $error=RevokeUserPerm($name,$perm);
-      if ($error) {
-	print "Can't revoke permission from user because: $error";
-      } else {
-	print "Revoked user $name permission $perm\n";
-      }
-    }
-  }
-  print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
+	if (!UserCan($user,"manage-users")) {
+		print h2('You do not have the required permissions to manage user permissions.');
+	} else {
+		if (!$run) {
+			#
+			# Generate the add form.
+			#
+			print start_form(-name=>'RevokeUserPerm'),
+			h2('Revoke User Permission'),
+			"Name: ", textfield(-name=>'name'),
+			"Permission: ", textfield(-name=>'permission'),
+			p,
+			hidden(-name=>'run',-default=>['1']),
+			hidden(-name=>'act',-default=>['revoke-perm-user']),
+			submit,
+			end_form,
+			hr;
+			my ($table,$error);
+			($table,$error)=PermTable();
+			if (!$error) {
+				print "<h2>Available Permissions</h2>$table";
+			}
+		} else {
+			my $name=param('name');
+			my $perm=param('permission');
+			my $error=RevokeUserPerm($name,$perm);
+			if ($error) {
+				print "Can't revoke permission from user because: $error";
+			} else {
+				print "Revoked user $name permission $perm\n";
+			}
+		}
+	}
+	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
-
-
-#
-#
-#
-#
-# Debugging output is the last thing we show, if it is set
-#
-#
-#
-#
-
-print "</center>" if !$debug;
 
 #
 # Generate debugging output if anything is enabled.
 #
 #
 if ($debug) {
-  print hr, p, hr,p, h2('Debugging Output');
-  print h3('Parameters');
-  print "<menu>";
-  print map { "<li>$_ => ".escapeHTML(param($_)) } param();
-  print "</menu>";
-  print h3('Cookies');
-  print "<menu>";
-  print map { "<li>$_ => ".escapeHTML(cookie($_))} cookie();
-  print "</menu>";
-  my $max= $#sqlinput>$#sqloutput ? $#sqlinput : $#sqloutput;
-  print h3('SQL');
-  print "<menu>";
-  for (my $i=0;$i<=$max;$i++) {
-    print "<li><b>Input:</b> ".escapeHTML($sqlinput[$i]);
-    print "<li><b>Output:</b> $sqloutput[$i]";
-  }
-  print "</menu>";
+	print hr, p, hr,p, h2('Debugging Output');
+	print h3('Parameters');
+	print "<menu>";
+	print map { "<li>$_ => ".escapeHTML(param($_)) } param();
+	print "</menu>";
+	print h3('Cookies');
+	print "<menu>";
+	print map { "<li>$_ => ".escapeHTML(cookie($_))} cookie();
+	print "</menu>";
+	my $max= $#sqlinput>$#sqloutput ? $#sqlinput : $#sqloutput;
+	print h3('SQL');
+	print "<menu>";
+	for (my $i=0;$i<=$max;$i++) {
+		print "<li><b>Input:</b> ".escapeHTML($sqlinput[$i]);
+		print "<li><b>Output:</b> $sqloutput[$i]";
+	}
+	print "</menu>";
 }
 
 print end_html;
@@ -627,23 +672,25 @@ print end_html;
 # $error false on success, error string on failure
 #
 sub Committees {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
-  my @rows;
-  eval {
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
-  };
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+	my @rows;
+	eval {
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+	};
 
-  if ($@) {
-    return (undef,$@);
-  } else {
-    if ($format eq "table") {
-      return (MakeTable("committee_data","2D",
-			["latitude", "longitude", "name", "party", "street1", "street2", "city", "state", "zip"],
-			@rows),$@);
-    } else {
-      return (MakeRaw("committee_data","2D",@rows),$@);
-    }
-  }
+	if ($@) {
+		return (undef,$@);
+	} else {
+		if ($format eq "table") {
+			return (MakeTable("committee_data","2D",
+				["latitude", "longitude", "name", "party", "street1", "street2", "city", "state", "zip"],
+				@rows),$@);
+		} elsif ($format eq "json") {
+			return encode_json(@rows);
+		} else {
+			return (MakeRaw("committee_data","2D",@rows),$@);
+		}
+	}
 }
 
 
@@ -653,23 +700,25 @@ sub Committees {
 # $error false on success, error string on failure
 #
 sub Candidates {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
-  my @rows;
-  eval {
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
-  };
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+	my @rows;
+	eval {
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+	};
 
-  if ($@) {
-    return (undef,$@);
-  } else {
-    if ($format eq "table") {
-      return (MakeTable("candidate_data", "2D",
-			["latitude", "longitude", "name", "party", "street1", "street2", "city", "state", "zip"],
-			@rows),$@);
-    } else {
-      return (MakeRaw("candidate_data","2D",@rows),$@);
-    }
-  }
+	if ($@) {
+		return (undef,$@);
+	} else {
+		if ($format eq "table") {
+			return (MakeTable("candidate_data", "2D",
+				["latitude", "longitude", "name", "party", "street1", "street2", "city", "state", "zip"],
+				@rows),$@);
+		} elsif ($format eq "json") {
+			return encode_json(@rows);
+		} else {
+			return (MakeRaw("candidate_data","2D",@rows),$@);
+		}
+	}
 }
 
 
@@ -682,23 +731,25 @@ sub Candidates {
 # $error false on success, error string on failure
 #
 sub Individuals {
-  my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
-  my @rows;
-  eval {
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
-  };
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+	my @rows;
+	eval {
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+	};
 
-  if ($@) {
-    return (undef,$@);
-  } else {
-    if ($format eq "table") {
-      return (MakeTable("individual_data", "2D",
-			["latitude", "longitude", "name", "city", "state", "zip", "employer", "amount"],
-			@rows),$@);
-    } else {
-      return (MakeRaw("individual_data","2D",@rows),$@);
-    }
-  }
+	if ($@) {
+		return (undef,$@);
+	} else {
+		if ($format eq "table") {
+			return (MakeTable("individual_data", "2D",
+				["latitude", "longitude", "name", "city", "state", "zip", "employer", "amount"],
+				@rows),$@);
+		} elsif ($format eq "json") {
+			return encode_json(@rows);
+		} else {
+			return (MakeRaw("individual_data","2D",@rows),$@);
+		}
+	}
 }
 
 
@@ -709,23 +760,25 @@ sub Individuals {
 # $error false on success, error string on failure
 #
 sub Opinions {
-  my ($latne, $longne, $latsw, $longsw, $cycle,$format) = @_;
-  my @rows;
-  eval {
-    @rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, color from rwb_opinions where latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
-  };
+	my ($latne, $longne, $latsw, $longsw, $cycle,$format) = @_;
+	my @rows;
+	eval {
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, color from rwb_opinions where latitude>? and latitude<? and longitude>? and longitude<?",undef,$latsw,$latne,$longsw,$longne);
+	};
 
-  if ($@) {
-    return (undef,$@);
-  } else {
-    if ($format eq "table") {
-      return (MakeTable("opinion_data","2D",
-			["latitude", "longitude", "name", "city", "state", "zip", "employer", "amount"],
-			@rows),$@);
-    } else {
-      return (MakeRaw("opinion_data","2D",@rows),$@);
-    }
-  }
+	if ($@) {
+		return (undef,$@);
+	} else {
+		if ($format eq "table") {
+			return (MakeTable("opinion_data","2D",
+				["latitude", "longitude", "name", "city", "state", "zip", "employer", "amount"],
+				@rows),$@);
+		} elsif ($format eq "json") {
+			return encode_json(@rows);
+		} else {
+			return (MakeRaw("opinion_data","2D",@rows),$@);
+		}
+	}
 }
 
 
@@ -735,16 +788,16 @@ sub Opinions {
 # $error false on success, error string on failure
 #
 sub PermTable {
-  my @rows;
-  eval { @rows = ExecSQL($dbuser, $dbpasswd, "select action from rwb_actions"); };
-  if ($@) {
-    return (undef,$@);
-  } else {
-    return (MakeTable("perm_table",
-		      "2D",
-		     ["Perm"],
-		     @rows),$@);
-  }
+	my @rows;
+	eval { @rows = ExecSQL($dbuser, $dbpasswd, "select action from rwb_actions"); };
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return (MakeTable("perm_table",
+			"2D",
+			["Perm"],
+			@rows),$@);
+	}
 }
 
 #
@@ -753,16 +806,16 @@ sub PermTable {
 # $error false on success, error string on failure
 #
 sub UserTable {
-  my @rows;
-  eval { @rows = ExecSQL($dbuser, $dbpasswd, "select name, email from rwb_users order by name"); };
-  if ($@) {
-    return (undef,$@);
-  } else {
-    return (MakeTable("user_table",
-		      "2D",
-		     ["Name", "Email"],
-		     @rows),$@);
-  }
+	my @rows;
+	eval { @rows = ExecSQL($dbuser, $dbpasswd, "select name, email from rwb_users order by name"); };
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return (MakeTable("user_table",
+			"2D",
+			["Name", "Email"],
+			@rows),$@);
+	}
 }
 
 #
@@ -771,16 +824,16 @@ sub UserTable {
 # $error false on success, error string on failure
 #
 sub UserPermTable {
-  my @rows;
-  eval { @rows = ExecSQL($dbuser, $dbpasswd, "select rwb_users.name, rwb_permissions.action from rwb_users, rwb_permissions where rwb_users.name=rwb_permissions.name order by rwb_users.name"); };
-  if ($@) {
-    return (undef,$@);
-  } else {
-    return (MakeTable("userperm_table",
-		      "2D",
-		     ["Name", "Permission"],
-		     @rows),$@);
-  }
+	my @rows;
+	eval { @rows = ExecSQL($dbuser, $dbpasswd, "select rwb_users.name, rwb_permissions.action from rwb_users, rwb_permissions where rwb_users.name=rwb_permissions.name order by rwb_users.name"); };
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return (MakeTable("userperm_table",
+			"2D",
+			["Name", "Permission"],
+			@rows),$@);
+	}
 }
 
 #
@@ -792,9 +845,9 @@ sub UserPermTable {
 # UserAdd($name,$password,$email)
 #
 sub UserAdd {
-  eval { ExecSQL($dbuser,$dbpasswd,
-		 "insert into rwb_users (name,password,email,referer) values (?,?,?,?)",undef,@_);};
-  return $@;
+	eval { ExecSQL($dbuser,$dbpasswd,
+		"insert into rwb_users (name,password,email,referer) values (?,?,?,?)",undef,@_);};
+	return $@;
 }
 
 #
@@ -802,8 +855,8 @@ sub UserAdd {
 # returns false on success, $error string on failure
 #
 sub UserDel {
-  eval {ExecSQL($dbuser,$dbpasswd,"delete from rwb_users where name=?", undef, @_);};
-  return $@;
+	eval {ExecSQL($dbuser,$dbpasswd,"delete from rwb_users where name=?", undef, @_);};
+	return $@;
 }
 
 
@@ -815,9 +868,9 @@ sub UserDel {
 # GiveUserPerm($name,$perm)
 #
 sub GiveUserPerm {
-  eval { ExecSQL($dbuser,$dbpasswd,
-		 "insert into rwb_permissions (name,action) values (?,?)",undef,@_);};
-  return $@;
+	eval { ExecSQL($dbuser,$dbpasswd,
+		"insert into rwb_permissions (name,action) values (?,?)",undef,@_);};
+	return $@;
 }
 
 #
@@ -828,9 +881,9 @@ sub GiveUserPerm {
 # RevokeUserPerm($name,$perm)
 #
 sub RevokeUserPerm {
-  eval { ExecSQL($dbuser,$dbpasswd,
-		 "delete from rwb_permissions where name=? and action=?",undef,@_);};
-  return $@;
+	eval { ExecSQL($dbuser,$dbpasswd,
+		"delete from rwb_permissions where name=? and action=?",undef,@_);};
+	return $@;
 }
 
 #
@@ -841,14 +894,14 @@ sub RevokeUserPerm {
 #
 #
 sub ValidUser {
-  my ($user,$password)=@_;
-  my @col;
-  eval {@col=ExecSQL($dbuser,$dbpasswd, "select count(*) from rwb_users where name=? and password=?","COL",$user,$password);};
-  if ($@) {
-    return 0;
-  } else {
-    return $col[0]>0;
-  }
+	my ($user,$password)=@_;
+	my @col;
+	eval {@col=ExecSQL($dbuser,$dbpasswd, "select count(*) from rwb_users where name=? and password=?","COL",$user,$password);};
+	if ($@) {
+		return 0;
+	} else {
+		return $col[0]>0;
+	}
 }
 
 
@@ -859,14 +912,14 @@ sub ValidUser {
 # $ok = UserCan($user,$action)
 #
 sub UserCan {
-  my ($user,$action)=@_;
-  my @col;
-  eval {@col= ExecSQL($dbuser,$dbpasswd, "select count(*) from rwb_permissions where name=? and action=?","COL",$user,$action);};
-  if ($@) {
-    return 0;
-  } else {
-    return $col[0]>0;
-  }
+	my ($user,$action)=@_;
+	my @col;
+	eval {@col= ExecSQL($dbuser,$dbpasswd, "select count(*) from rwb_permissions where name=? and action=?","COL",$user,$action);};
+	if ($@) {
+		return 0;
+	} else {
+		return $col[0]>0;
+	}
 }
 
 
@@ -888,47 +941,47 @@ sub UserCan {
 # $html = MakeTable($id, $type, $headerlistref,@list);
 #
 sub MakeTable {
-  my ($id,$type,$headerlistref,@list)=@_;
-  my $out;
-  #
-  # Check to see if there is anything to output
-  #
-  if ((defined $headerlistref) || ($#list>=0)) {
-    # if there is, begin a table
-    #
-    $out="<table id=\"$id\" border>";
-    #
-    # if there is a header list, then output it in bold
-    #
-    if (defined $headerlistref) {
-      $out.="<tr>".join("",(map {"<td><b>$_</b></td>"} @{$headerlistref}))."</tr>";
-    }
-    #
-    # If it's a single row, just output it in an obvious way
-    #
-    if ($type eq "ROW") {
-      #
-      # map {code} @list means "apply this code to every member of the list
-      # and return the modified list.  $_ is the current list member
-      #
-      $out.="<tr>".(map {defined($_) ? "<td>$_</td>" : "<td>(null)</td>" } @list)."</tr>";
-    } elsif ($type eq "COL") {
-      #
-      # ditto for a single column
-      #
-      $out.=join("",map {defined($_) ? "<tr><td>$_</td></tr>" : "<tr><td>(null)</td></tr>"} @list);
-    } else {
-      #
-      # For a 2D table, it's a bit more complicated...
-      #
-      $out.= join("",map {"<tr>$_</tr>"} (map {join("",map {defined($_) ? "<td>$_</td>" : "<td>(null)</td>"} @{$_})} @list));
-    }
-    $out.="</table>";
-  } else {
-    # if no header row or list, then just say none.
-    $out.="(none)";
-  }
-  return $out;
+	my ($id,$type,$headerlistref,@list)=@_;
+	my $out;
+	#
+	# Check to see if there is anything to output
+	#
+	if ((defined $headerlistref) || ($#list>=0)) {
+		# if there is, begin a table
+		#
+		$out="<table id=\"$id\" border>";
+		#
+		# if there is a header list, then output it in bold
+		#
+		if (defined $headerlistref) {
+			$out.="<tr>".join("",(map {"<td><b>$_</b></td>"} @{$headerlistref}))."</tr>";
+		}
+		#
+		# If it's a single row, just output it in an obvious way
+		#
+		if ($type eq "ROW") {
+			#
+			# map {code} @list means "apply this code to every member of the list
+			# and return the modified list.  $_ is the current list member
+			#
+			$out.="<tr>".(map {defined($_) ? "<td>$_</td>" : "<td>(null)</td>" } @list)."</tr>";
+		} elsif ($type eq "COL") {
+			#
+			# ditto for a single column
+			#
+			$out.=join("",map {defined($_) ? "<tr><td>$_</td></tr>" : "<tr><td>(null)</td></tr>"} @list);
+		} else {
+			#
+			# For a 2D table, it's a bit more complicated...
+			#
+			$out.= join("",map {"<tr>$_</tr>"} (map {join("",map {defined($_) ? "<td>$_</td>" : "<td>(null)</td>"} @{$_})} @list));
+		}
+		$out.="</table>";
+	} else {
+		# if no header row or list, then just say none.
+		$out.="(none)";
+	}
+	return $out;
 }
 
 
@@ -945,39 +998,39 @@ sub MakeTable {
 # $html = MakeRaw($id, $type, @list);
 #
 sub MakeRaw {
-  my ($id, $type,@list)=@_;
-  my $out;
-  #
-  # Check to see if there is anything to output
-  #
-  $out="<pre id=\"$id\">\n";
-  #
-  # If it's a single row, just output it in an obvious way
-  #
-  if ($type eq "ROW") {
-    #
-    # map {code} @list means "apply this code to every member of the list
-    # and return the modified list.  $_ is the current list member
-    #
-    $out.=join("\t",map { defined($_) ? $_ : "(null)" } @list);
-    $out.="\n";
-  } elsif ($type eq "COL") {
-    #
-    # ditto for a single column
-    #
-    $out.=join("\n",map { defined($_) ? $_ : "(null)" } @list);
-    $out.="\n";
-  } else {
-    #
-    # For a 2D table
-    #
-    foreach my $r (@list) {
-      $out.= join("\t", map { defined($_) ? $_ : "(null)" } @{$r});
-      $out.="\n";
-    }
-  }
-  $out.="</pre>\n";
-  return $out;
+	my ($id, $type,@list)=@_;
+	my $out;
+	#
+	# Check to see if there is anything to output
+	#
+	$out="<pre id=\"$id\">\n";
+	#
+	# If it's a single row, just output it in an obvious way
+	#
+	if ($type eq "ROW") {
+		#
+		# map {code} @list means "apply this code to every member of the list
+		# and return the modified list.  $_ is the current list member
+		#
+		$out.=join("\t",map { defined($_) ? $_ : "(null)" } @list);
+		$out.="\n";
+		} elsif ($type eq "COL") {
+		#
+		# ditto for a single column
+		#
+		$out.=join("\n",map { defined($_) ? $_ : "(null)" } @list);
+		$out.="\n";
+		} else {
+		#
+		# For a 2D table
+		#
+		foreach my $r (@list) {
+			$out.= join("\t", map { defined($_) ? $_ : "(null)" } @{$r});
+			$out.="\n";
+		}
+	}
+	$out.="</pre>\n";
+	return $out;
 }
 
 #
@@ -991,70 +1044,70 @@ sub MakeRaw {
 # ExecSQL executes "die" on failure.
 #
 sub ExecSQL {
-  my ($user, $passwd, $querystring, $type, @fill) =@_;
-  if ($debug) {
-    # if we are recording inputs, just push the query string and fill list onto the
-    # global sqlinput list
-    push @sqlinput, "$querystring (".join(",",map {"'$_'"} @fill).")";
-  }
-  my $dbh = DBI->connect("DBI:Oracle:",$user,$passwd);
-  if (not $dbh) {
-    # if the connect failed, record the reason to the sqloutput list (if set)
-    # and then die.
-    if ($debug) {
-      push @sqloutput, "<b>ERROR: Can't connect to the database because of ".$DBI::errstr."</b>";
-    }
-    die "Can't connect to database because of ".$DBI::errstr;
-  }
-  my $sth = $dbh->prepare($querystring);
-  if (not $sth) {
-    #
-    # If prepare failed, then record reason to sqloutput and then die
-    #
-    if ($debug) {
-      push @sqloutput, "<b>ERROR: Can't prepare '$querystring' because of ".$DBI::errstr."</b>";
-    }
-    my $errstr="Can't prepare $querystring because of ".$DBI::errstr;
-    $dbh->disconnect();
-    die $errstr;
-  }
-  if (not $sth->execute(@fill)) {
-    #
-    # if exec failed, record to sqlout and die.
-    if ($debug) {
-      push @sqloutput, "<b>ERROR: Can't execute '$querystring' with fill (".join(",",map {"'$_'"} @fill).") because of ".$DBI::errstr."</b>";
-    }
-    my $errstr="Can't execute $querystring with fill (".join(",",map {"'$_'"} @fill).") because of ".$DBI::errstr;
-    $dbh->disconnect();
-    die $errstr;
-  }
-  #
-  # The rest assumes that the data will be forthcoming.
-  #
-  #
-  my @data;
-  if (defined $type and $type eq "ROW") {
-    @data=$sth->fetchrow_array();
-    $sth->finish();
-    if ($debug) {push @sqloutput, MakeTable("debug_sqloutput","ROW",undef,@data);}
-    $dbh->disconnect();
-    return @data;
-  }
-  my @ret;
-  while (@data=$sth->fetchrow_array()) {
-    push @ret, [@data];
-  }
-  if (defined $type and $type eq "COL") {
-    @data = map {$_->[0]} @ret;
-    $sth->finish();
-    if ($debug) {push @sqloutput, MakeTable("debug_sqloutput","COL",undef,@data);}
-    $dbh->disconnect();
-    return @data;
-  }
-  $sth->finish();
-  if ($debug) {push @sqloutput, MakeTable("debug_sql_output","2D",undef,@ret);}
-  $dbh->disconnect();
-  return @ret;
+	my ($user, $passwd, $querystring, $type, @fill) =@_;
+	if ($debug) {
+		# if we are recording inputs, just push the query string and fill list onto the
+		# global sqlinput list
+		push @sqlinput, "$querystring (".join(",",map {"'$_'"} @fill).")";
+	}
+	my $dbh = DBI->connect("DBI:Oracle:",$user,$passwd);
+	if (not $dbh) {
+		# if the connect failed, record the reason to the sqloutput list (if set)
+		# and then die.
+		if ($debug) {
+			push @sqloutput, "<b>ERROR: Can't connect to the database because of ".$DBI::errstr."</b>";
+		}
+		die "Can't connect to database because of ".$DBI::errstr;
+	}
+	my $sth = $dbh->prepare($querystring);
+	if (not $sth) {
+		#
+		# If prepare failed, then record reason to sqloutput and then die
+		#
+		if ($debug) {
+			push @sqloutput, "<b>ERROR: Can't prepare '$querystring' because of ".$DBI::errstr."</b>";
+		}
+		my $errstr="Can't prepare $querystring because of ".$DBI::errstr;
+		$dbh->disconnect();
+		die $errstr;
+	}
+	if (not $sth->execute(@fill)) {
+		#
+		# if exec failed, record to sqlout and die.
+		if ($debug) {
+			push @sqloutput, "<b>ERROR: Can't execute '$querystring' with fill (".join(",",map {"'$_'"} @fill).") because of ".$DBI::errstr."</b>";
+		}
+		my $errstr="Can't execute $querystring with fill (".join(",",map {"'$_'"} @fill).") because of ".$DBI::errstr;
+		$dbh->disconnect();
+		die $errstr;
+	}
+	#
+	# The rest assumes that the data will be forthcoming.
+	#
+	#
+	my @data;
+	if (defined $type and $type eq "ROW") {
+		@data=$sth->fetchrow_array();
+		$sth->finish();
+		if ($debug) {push @sqloutput, MakeTable("debug_sqloutput","ROW",undef,@data);}
+		$dbh->disconnect();
+		return @data;
+	}
+	my @ret;
+	while (@data=$sth->fetchrow_array()) {
+		push @ret, [@data];
+	}
+	if (defined $type and $type eq "COL") {
+		@data = map {$_->[0]} @ret;
+		$sth->finish();
+		if ($debug) {push @sqloutput, MakeTable("debug_sqloutput","COL",undef,@data);}
+		$dbh->disconnect();
+		return @data;
+	}
+	$sth->finish();
+	if ($debug) {push @sqloutput, MakeTable("debug_sql_output","2D",undef,@ret);}
+	$dbh->disconnect();
+	return @ret;
 }
 
 
@@ -1068,14 +1121,14 @@ sub ExecSQL {
 # find its butt
 #
 BEGIN {
-  unless ($ENV{BEGIN_BLOCK}) {
-    use Cwd;
-    $ENV{ORACLE_BASE}="/raid/oracle11g/app/oracle/product/11.2.0.1.0";
-    $ENV{ORACLE_HOME}=$ENV{ORACLE_BASE}."/db_1";
-    $ENV{ORACLE_SID}="CS339";
-    $ENV{LD_LIBRARY_PATH}=$ENV{ORACLE_HOME}."/lib";
-    $ENV{BEGIN_BLOCK} = 1;
-    exec 'env',cwd().'/'.$0,@ARGV;
-  }
+	unless ($ENV{BEGIN_BLOCK}) {
+		use Cwd;
+		$ENV{ORACLE_BASE}="/raid/oracle11g/app/oracle/product/11.2.0.1.0";
+		$ENV{ORACLE_HOME}=$ENV{ORACLE_BASE}."/db_1";
+		$ENV{ORACLE_SID}="CS339";
+		$ENV{LD_LIBRARY_PATH}=$ENV{ORACLE_HOME}."/lib";
+		$ENV{BEGIN_BLOCK} = 1;
+		exec 'env',cwd().'/'.$0,@ARGV;
+	}
 }
 

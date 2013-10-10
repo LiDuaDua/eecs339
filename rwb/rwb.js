@@ -1,4 +1,4 @@
-/* jshint strict: false */
+/* jshint strict: false, quotmark: double */
 /* global $: false, google: false */
 //
 // Global state
@@ -25,11 +25,11 @@ UpdateMapById = function(id, tag){
 	for (var i=0; i<rows.length; i++) {
 		var cols = rows[i].split("\t"),
 			lat = cols[0],
-			long = cols[1];
+			lng = cols[1];
 
 		markers.push(new google.maps.Marker({
 			map: map,
-			position: new google.maps.LatLng(lat,long),
+			position: new google.maps.LatLng(lat,lng),
 			title: tag+"\n"+cols.join("\n")
 		}));
 
@@ -47,29 +47,24 @@ UpdateMap = function(){
 	var color = $("#color");
 
 	color.css("background-color", "white")
-		.html("<b><blink>Updating Display...</blink></b>");
+		.text("Updating Display...");
 
 	ClearMarkers();
 
 	UpdateMapById("committee_data","COMMITTEE");
-	//UpdateMapById("candidate_data","CANDIDATE");
-	//UpdateMapById("individual_data", "INDIVIDUAL");
-	//UpdateMapById("opinion_data","OPINION");
+	UpdateMapById("candidate_data","CANDIDATE");
+	UpdateMapById("individual_data", "INDIVIDUAL");
+	UpdateMapById("opinion_data","OPINION");
 
 
 	color.html("Ready");
 
-	if (Math.random()>0.5) {
+	/*if (Math.random()>0.5) {
 		color.css("background-color", "blue");
 	} else {
 		color.css("background-color", "red");
-	}
+	}*/
 
-},
-
-NewData = function(data){
-	$("#data").html(data);
-	UpdateMap();
 },
 
 ViewShift = function(){
@@ -78,7 +73,7 @@ ViewShift = function(){
 		sw = bounds.getSouthWest();
 
 	$("#color").css("background-color","white")
-		.html("<b><blink>Querying...("+ne.lat()+","+ne.lng()+") to ("+sw.lat()+","+sw.lng()+")</blink></b>");
+		.text("Querying...("+ne.lat()+","+ne.lng()+") to ("+sw.lat()+","+sw.lng()+")");
 
 	// debug status flows through by cookie
 	$.get("rwb.pl",
@@ -89,43 +84,46 @@ ViewShift = function(){
 			latsw:	sw.lat(),
 			longsw:	sw.lng(),
 			format:	"raw",
-			what:	"committees,candidates"
-		}, NewData);
+			what:	"committees,candidates,individuals,opinions"
+		}, function(data){
+			$("#data").html(data);
+			UpdateMap();
+		});
 },
 
 Reposition = function(pos){
 	var lat = pos.coords.latitude,
-		long = pos.coords.longitude;
+		lng = pos.coords.longitude;
 
-	map.setCenter(new google.maps.LatLng(lat,long));
-	usermark.setPosition(new google.maps.LatLng(lat,long));
+	map.setCenter(new google.maps.LatLng(lat,lng));
+	usermark.setPosition(new google.maps.LatLng(lat,lng));
 },
 
 Start = function(location){
 	var lat = location.coords.latitude,
-		long = location.coords.longitude,
+		lng = location.coords.longitude,
 		acc = location.coords.accuracy,
 		mapc = $("#map");
 
 	map = new google.maps.Map(mapc[0],
 		{
 			zoom: 16,
-			center: new google.maps.LatLng(lat,long),
+			center: new google.maps.LatLng(lat,lng),
 			mapTypeId: google.maps.MapTypeId.HYBRID
 		});
 
 	usermark = new google.maps.Marker({ map:map,
-		position: new google.maps.LatLng(lat,long),
+		position: new google.maps.LatLng(lat,lng),
 		title: "You are here"});
 
 	markers = [];
 
 	$("#color").css("background-color", "white")
-		.html("<b><blink>Waiting for first position</blink></b>");
+		.text("Waiting for first position");
 
 	google.maps.event.addListener(map,"bounds_changed",ViewShift);
-	google.maps.event.addListener(map,"center_changed",ViewShift);
-	google.maps.event.addListener(map,"zoom_changed",ViewShift);
+	//google.maps.event.addListener(map,"center_changed",ViewShift);
+	//google.maps.event.addListener(map,"zoom_changed",ViewShift);
 
 	navigator.geolocation.watchPosition(Reposition);
 };
