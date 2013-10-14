@@ -279,6 +279,18 @@ if ($action eq "base") {
 		$template->param("DEBUG_DISPLAY" => "none");
 	}
 
+	my @cycles;
+	my $mycycles = "";
+	my $cycle;
+
+	eval{ @cycles = ExecSQL($dbuser,$dbpasswd,"SELECT DISTINCT cycle FROM cs339.committee_master UNION SELECT DISTINCT cycle FROM cs339.candidate_master UNION SELECT DISTINCT cycle FROM cs339.individual", "COL"); };
+
+	foreach $cycle(@cycles){
+		$mycycles .= "<option>".$cycle."</option>\n";
+	}
+
+	$template->param("CYCLES" => $mycycles);
+
 	if ($user eq "anon"){
 		$template->param("STATUS" => 'Login');
 		$template->param("DROPDOWN" => '<form role="form">
@@ -291,7 +303,7 @@ if ($action eq "base") {
 							<div class="col-md-12 text-right">
 								<button class="btn btn-primary" type="submit">Login</button>
 							</div>
-						</form>')
+						</form>');
 	} else {
 		$template->param("STATUS" => $user);
 
@@ -371,7 +383,7 @@ sub MakeModal {
 					</div>
 				</div><!-- /.modal-content -->
 			</div><!-- /.modal-dialog -->
-		</div><!-- /.modal -->'
+		</div><!-- /.modal -->';
 }
 
 #
@@ -400,7 +412,7 @@ if ($action eq "near") {
 	my %what;
 
 	$format = "table" if !defined($format);
-	$cycle = "1112" if !defined($cycle);
+	$cycle = "'1112'" if !defined($cycle);
 
 	if (!defined($whatparam) || $whatparam eq "all") {
 		%what = ( committees => 1,
@@ -611,7 +623,7 @@ sub Committees {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
 	eval {
-		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle in (?) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {
@@ -638,8 +650,9 @@ sub Committees {
 sub Candidates {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
+	my $statement = "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where cycle in (".$cycle.") and latitude>? and latitude<? and longitude>? and longitude<?";
 	eval {
-		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cand_name, cand_pty_affiliation, cand_st1, cand_st2, cand_city, cand_st, cand_zip from cs339.candidate_master natural join cs339.cand_id_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+		@rows = ExecSQL($dbuser, $dbpasswd, $statement,undef,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {
@@ -670,7 +683,7 @@ sub Individuals {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
 	eval {
-		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle=? and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle in (?) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {

@@ -22,6 +22,20 @@
 				</li>
 			</ul>
 		</nav>
+		<div>
+			<form class="form" id="showcats">
+				Show: <label for="committees"><input type="checkbox" name="committees"> Committees</label>
+				<label for="candidates"><input type="checkbox" name="candidates"> Candidates</label>
+				<label for="individuals"><input type="checkbox" name="individuals"> Individuals</label>
+				<label for="opinion"><input type="checkbox" name="opinion"> Opinions</label>
+
+				<div class="form-group">
+					<select multiple class="form-control" id="showcycles">
+						<TMPL_VAR NAME=CYCLES>
+					</select>
+				</div>
+			</form>
+		</div>
 		<div class="panel panel-default">
 			<div id="color" class="panel-heading"></div>
 			<div id="map" class="panel-bodys"></div>
@@ -30,6 +44,9 @@
 			<div id="data" class="col-lg-12" style="display: <TMPL_VAR NAME=DEBUG_DISPLAY>;"></div>
 		</div>
 		<div id="committee_data" style="display: none;"></div>
+		<div id="candidate_data" style="display: none;"></div>
+		<div id="individual_data" style="display: none;"></div>
+		<div id="opinion_data" style="display: none;"></div>
 		<TMPL_VAR NAME=INVITE-USER>
 		<TMPL_VAR NAME=ADD-USER>
 		<TMPL_VAR NAME=DELETE-USER>

@@ -29,25 +29,51 @@ $(document).ready(function(){
 			$("<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-hidden=\"true\">&times;</button>").appendTo(".alert");
 		});
 	});
+
+	$("#showcats").on("change","input",function(){
+		categories = "";
+		var tmp = [];
+
+		$("#showcats").find("input:checked").each(function(){
+			tmp.push($(this).attr("name"));
+		});
+
+		categories = tmp.join(",");
+		ViewShift();
+	});
+
+	$("#showcycles").on("change",function(){
+		var tmp = $("#showcycles").val();
+
+		for(var i=0; i < tmp.length; i++){
+			tmp[i] = "'"+tmp[i]+"'";
+		}
+
+		cycles = tmp.join(",");
+		ViewShift();
+	});
 });
 
 // Global variables
-var map, usermark, markers = [],
+var map, usermark, markers = [], categories = "all", cycles = "'1112'",
 
 UpdateMapById = function(id, tag){
-	var rows  = $("#"+id).html().split("\n");
+	var data = $("#"+id).html();
+	if(data.length > 0){
+		var rows  = data.split("\n");
 
-	for (var i=0; i<rows.length; i++) {
-		var cols = rows[i].split("\t"),
-			lat = cols[0],
-			lng = cols[1];
+		for (var i=0; i<rows.length; i++) {
+			var cols = rows[i].split("\t"),
+				lat = cols[0],
+				lng = cols[1];
 
-		markers.push(new google.maps.Marker({
-			map: map,
-			position: new google.maps.LatLng(lat,lng),
-			title: tag+"\n"+cols.join("\n")
-		}));
+			markers.push(new google.maps.Marker({
+				map: map,
+				position: new google.maps.LatLng(lat,lng),
+				title: tag+"\n"+cols.join("\n")
+			}));
 
+		}
 	}
 },
 
@@ -68,7 +94,7 @@ UpdateMap = function(){
 
 	UpdateMapById("committee_data","COMMITTEE");
 	UpdateMapById("candidate_data","CANDIDATE");
-	UpdateMapById("individual_data", "INDIVIDUAL");
+	UpdateMapById("individual_data","INDIVIDUAL");
 	UpdateMapById("opinion_data","OPINION");
 
 
@@ -94,12 +120,13 @@ ViewShift = function(){
 	$.get("rwb.pl",
 		{
 			act:	"near",
+			cycle:	cycles,
 			latne:	ne.lat(),
 			longne:	ne.lng(),
 			latsw:	sw.lat(),
 			longsw:	sw.lng(),
 			format:	"raw",
-			what:	"committees,candidates,individuals,opinions"
+			what:	categories,
 		}, function(data){
 			$("#data").html(data);
 			UpdateMap();
