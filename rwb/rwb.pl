@@ -77,9 +77,6 @@ use Time::ParseDate;
 use HTML::Template;
 my $template = HTML::Template->new(filename => 'rwb.html');
 
-# Using JSON because RAW is stupid
-#use JSON;
-
 #
 # You need to override these for access to your database
 #
@@ -307,31 +304,40 @@ if ($action eq "base") {
 		}
 		if (UserCan($user,"manage-users") || UserCan($user,"invite-users")) {
 			$status_tmp .= '<li><a href="#invite-user" data-toggle="modal">Invite User</a></li>'."\n";
+
+			$template->param("INVITE-USER" => MakeModal("Invite User","invite-user",'<input type="email" class="form-control" name="email" placeholder="Email" required="required" />'));
 		}
 		if (UserCan($user,"manage-users") || UserCan($user,"add-users")) {
 			$status_tmp .= '<li><a href="#add-user" data-toggle="modal">Add User</a></li>'."\n";
+
+			$template->param("ADD-USER" => MakeModal("Add User","add-user",'<input type="text" class="form-control" name="name" placeholder="Name" required="required" />
+								<input type="text" class="form-control" name="email" placeholder="Email" required="required" />
+								<input type="password" class="form-control" name="password" placeholder="Password" required="required" />'));
 		}
 		if (UserCan($user,"manage-users")) {
 			$status_tmp .= '<li><a href="#delete-user" data-toggle="modal">Delete User</a></li>'."\n";
 			$status_tmp .= '<li><a href="#add-perm-user" data-toggle="modal">Add User Permission</a></li>'."\n";
 			$status_tmp .= '<li><a href="#revoke-perm-user" data-toggle="modal">Revoke User Permission</a></li>'."\n";
 
-			my ($table,$error);
-			($table,$error)=PermTable();
-			if (!$error) {
-				$table = "<h2>Available Permissions</h2>$table";
-			}
+			my $out = MakeModal("Delete User","delete-user",'<input type="text" class="form-control" name="name" placeholder="Name" required="required" />');
+
+			$template->param("DELETE-USER" => $out);
 
 			my $inputs = '<input type="text" class="form-control" name="name" placeholder="Name" />
 						<input type="text" class="form-control" name="permission" placeholder="Permission" />';
+			my ($table,$error);
+			($table,$error)=PermTable();
+			if (!$error) {
+				$inputs .= "<h5>Available Permissions</h5>$table";
+			}
 
-			my $out = MakeModal("Add User Permission","add-perm-user",$inputs) . $table;
+			$out = MakeModal("Add User Permission","add-perm-user",$inputs);
 
 			$template->param("ADD-PERM-USER" => $out);
 
-			#$out = MakeModal("Revoke User Permission","revoke-perm-user",$inputs);
+			$out = MakeModal("Revoke User Permission","revoke-perm-user",$inputs);
 
-			#$template->param("REVOKE-PERM-USER" => $out.$table);
+			$template->param("REVOKE-PERM-USER" => $out);
 		}
 		$status_tmp .= '<li><a href="rwb.pl?act=logout&run=1">Logout</a></li>';
 
@@ -352,7 +358,7 @@ sub MakeModal {
 						<h4 class="modal-title">'.$title.'</h4>
 					</div>
 					<div class="modal-body">
-						<form role="form">
+						<form role="form" onsubmit="$(\'.modal\').modal(\'hide\'); return false;">
 							<div class="col-lg-12">
 								'.$inputs.'
 							</div>
@@ -473,21 +479,7 @@ if ($action eq "add-user") {
 	if (!UserCan($user,"add-users") && !UserCan($user,"manage-users")) {
 		print h2('You do not have the required permissions to add users.');
 	} else {
-		if (!$run) {
-			print start_form(-name=>'AddUser'),
-			h2('Add User'),
-			"Name: ", textfield(-name=>'name'),
-			p,
-			"Email: ", textfield(-name=>'email'),
-			p,
-			"Password: ", textfield(-name=>'password'),
-			p,
-			hidden(-name=>'run',-default=>['1']),
-			hidden(-name=>'act',-default=>['add-user']),
-			submit,
-			end_form,
-			hr;
-		} else {
+		if ($run) {
 			my $name=param('name');
 			my $email=param('email');
 			my $password=param('password');
@@ -514,20 +506,7 @@ if ($action eq "delete-user") {
 	if (!UserCan($user,"manage-users")) {
 		print h2('You do not have the required permissions to delete users.');
 	} else {
-		if (!$run) {
-		#
-		# Generate the add form.
-		#
-		print start_form(-name=>'DeleteUser'),
-		h2('Delete User'),
-		"Name: ", textfield(-name=>'name'),
-		p,
-		hidden(-name=>'run',-default=>['1']),
-		hidden(-name=>'act',-default=>['delete-user']),
-		submit,
-		end_form,
-		hr;
-		} else {
+		if ($run) {
 			my $name=param('name');
 			my $error;
 			$error=UserDelete($name);
@@ -538,7 +517,6 @@ if ($action eq "delete-user") {
 			}
 		}
 	}
-	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
 
@@ -554,26 +532,7 @@ if ($action eq "add-perm-user") {
 	if (!UserCan($user,"manage-users")) {
 		print h2('You do not have the required permissions to manage user permissions.');
 	} else {
-		if (!$run) {
-			#
-			# Generate the add form.
-			#
-			print start_form(-name=>'AddUserPerm'),
-			h2('Add User Permission'),
-			"Name: ", textfield(-name=>'name'),
-			"Permission: ", textfield(-name=>'permission'),
-			p,
-			hidden(-name=>'run',-default=>['1']),
-			hidden(-name=>'act',-default=>['add-perm-user']),
-			submit,
-			end_form,
-			hr;
-			my ($table,$error);
-			($table,$error)=PermTable();
-			if (!$error) {
-				print "<h2>Available Permissions</h2>$table";
-			}
-		} else {
+		if ($run) {
 			my $name=param('name');
 			my $perm=param('permission');
 			my $error=GiveUserPerm($name,$perm);
@@ -584,7 +543,6 @@ if ($action eq "add-perm-user") {
 			}
 		}
 	}
-	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
 
@@ -600,26 +558,7 @@ if ($action eq "revoke-perm-user") {
 	if (!UserCan($user,"manage-users")) {
 		print h2('You do not have the required permissions to manage user permissions.');
 	} else {
-		if (!$run) {
-			#
-			# Generate the add form.
-			#
-			print start_form(-name=>'RevokeUserPerm'),
-			h2('Revoke User Permission'),
-			"Name: ", textfield(-name=>'name'),
-			"Permission: ", textfield(-name=>'permission'),
-			p,
-			hidden(-name=>'run',-default=>['1']),
-			hidden(-name=>'act',-default=>['revoke-perm-user']),
-			submit,
-			end_form,
-			hr;
-			my ($table,$error);
-			($table,$error)=PermTable();
-			if (!$error) {
-				print "<h2>Available Permissions</h2>$table";
-			}
-		} else {
+		if ($run) {
 			my $name=param('name');
 			my $perm=param('permission');
 			my $error=RevokeUserPerm($name,$perm);
@@ -630,7 +569,6 @@ if ($action eq "revoke-perm-user") {
 			}
 		}
 	}
-	print "<p><a href=\"rwb.pl?act=base&run=1\">Return</a></p>";
 }
 
 
@@ -657,8 +595,6 @@ if ($debug) {
 	}
 	print "</menu>";
 }
-
-print end_html;
 
 #
 # The main line is finished at this point.
@@ -949,12 +885,12 @@ sub MakeTable {
 	if ((defined $headerlistref) || ($#list>=0)) {
 		# if there is, begin a table
 		#
-		$out="<table id=\"$id\" border>";
+		$out="<table id=\"$id\" class=\"table table-bordered table-striped\">";
 		#
 		# if there is a header list, then output it in bold
 		#
 		if (defined $headerlistref) {
-			$out.="<tr>".join("",(map {"<td><b>$_</b></td>"} @{$headerlistref}))."</tr>";
+			$out.="<tr>".join("",(map {"<th>$_</th>"} @{$headerlistref}))."</tr>";
 		}
 		#
 		# If it's a single row, just output it in an obvious way

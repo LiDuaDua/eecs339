@@ -14,6 +14,21 @@
 //
 $(document).ready(function(){
 	navigator.geolocation.getCurrentPosition(Start);
+
+	var data = {}, name, val;
+	$("form").on("submit",function(){
+		$(this).find("input").each(function(i,el){
+			name = $(el).attr("name");
+			val = $(el).val();
+
+			data[name] = val;
+		});
+
+		$.get("./rwb.pl",data,function(reply){
+			$("<div />").addClass("alert alert-info fade").text(reply).prependTo(".container");
+			$("<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-hidden=\"true\">&times;</button>").appendTo(".alert");
+		});
+	});
 });
 
 // Global variables

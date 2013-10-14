@@ -30,78 +30,9 @@
 			<div id="data" class="col-lg-12" style="display: <TMPL_VAR NAME=DEBUG_DISPLAY>;"></div>
 		</div>
 		<div id="committee_data" style="display: none;"></div>
-		<div id="give-opinion-data" class="modal fade">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title">Give Opinion Data</h4>
-					</div>
-					<div class="modal-body">
-						<TMPL_VAR NAME=GIVE-OPINION-DATA>
-					</div>
-				</div><!-- /.modal-content -->
-			</div><!-- /.modal-dialog -->
-		</div><!-- /.modal -->
-		<div id="invite-user" class="modal fade">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title">Invite User</h4>
-					</div>
-					<div class="modal-body">
-						<TMPL_VAR NAME=INVITE-USER>
-					</div>
-				</div><!-- /.modal-content -->
-			</div><!-- /.modal-dialog -->
-		</div><!-- /.modal -->
-		<div id="add-user" class="modal fade">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title">Add User</h4>
-					</div>
-					<div class="modal-body">
-						<form role="form">
-							<div class="col-lg-12">
-								<input type="text" class="form-control" name="name" placeholder="Name" required="required" />
-								<input type="text" class="form-control" name="email" placeholder="Email" required="required" />
-								<input type="password" class="form-control" name="password" placeholder="Password" required="required" />
-							</div>
-							<input type="text" name="run" value="1" style="display: none;" />
-							<input type="text" name="act" value="add-user" style="display: none;" />
-							<div class="col-md-12 text-right">
-								<button class="btn btn-primary" type="submit">Submit</button>
-							</div>
-						</form>
-					</div>
-				</div><!-- /.modal-content -->
-			</div><!-- /.modal-dialog -->
-		</div><!-- /.modal -->
-		<div id="delete-user" class="modal fade">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-						<h4 class="modal-title">Delete User</h4>
-					</div>
-					<div class="modal-body">
-						<form role="form">
-							<div class="col-lg-12">
-								<input type="text" class="form-control" name="name" placeholder="Name" required="required" />
-							</div>
-							<input type="text" name="run" value="1" style="display: none;" />
-							<input type="text" name="act" value="delete-user" style="display: none;" />
-							<div class="col-md-12 text-right">
-								<button class="btn btn-primary" type="submit">Submit</button>
-							</div>
-						</form>
-					</div>
-				</div><!-- /.modal-content -->
-			</div><!-- /.modal-dialog -->
-		</div><!-- /.modal -->
+		<TMPL_VAR NAME=INVITE-USER>
+		<TMPL_VAR NAME=ADD-USER>
+		<TMPL_VAR NAME=DELETE-USER>
 		<TMPL_VAR NAME=ADD-PERM-USER>
 		<TMPL_VAR NAME=REVOKE-PERM-USER>
 	</div>
