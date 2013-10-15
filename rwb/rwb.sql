@@ -4,10 +4,10 @@
 --
 --
 -- This contains *part* of the Red, White, and Blue data
--- schema.  It does not include the representation of the 
--- FEC data and the Geolocation data,  which is available 
--- separately in ~pdinda/339/HANDOUT/rwb/fec.  
--- These shared tables should be 
+-- schema.  It does not include the representation of the
+-- FEC data and the Geolocation data,  which is available
+-- separately in ~pdinda/339/HANDOUT/rwb/fec.
+-- These shared tables should be
 -- access using cs339.tablename, that is, the student groups
 -- share the FEC and geolocation data
 --
@@ -17,6 +17,13 @@
 --
 --
 
+--temp while debugging
+drop table rwb_invites;
+drop table rwb_permissions;
+drop table rwb_actions;
+drop table rwb_opinions;
+drop table rwb_cs_ind_to_geo;
+drop table rwb_users;
 
 --
 -- RWB users.  Self explanatory
@@ -35,14 +42,14 @@ create table rwb_users (
 -- The right way to do this is to store an encrypted password
 -- in the database
 --
-  password VARCHAR(64) NOT NULL,
-    constraint long_passwd CHECK (password LIKE '________%'),
+  password varchar(64) not null,
+    constraint long_passwd check (password like '________%'),
 --
 -- Each user must have an email address and it must be unique
 -- the constraint checks to see that there is an "@" in the name
 --
-  email    varchar(256) not null UNIQUE
-    constraint email_ok CHECK (email LIKE '%@%'),
+  email    varchar(256) not null unique
+    constraint email_ok check (email like '%@%'),
 --
 -- Except for the root user and the nobody users, a user must be
 -- validated by an existing user (but not nobody)
@@ -54,35 +61,42 @@ create table rwb_users (
   constraint sane_referer check (name='root' or name<>referer)
 );
 
+create table rwb_invites (
+  code varchar(64) not null primary key,
+---
+  email varchar(256) not null unique constraint email_ok2 check (email like '%@%'),
+---
+  referer varchar(64) not null references rwb_users(name)
+);
 
 --
 -- the list of things that a user can do on the system
 --
-CREATE TABLE rwb_actions (
-  action VARCHAR(64) NOT NULL primary key
+create table rwb_actions (
+  action varchar(64) NOT NULL primary key
 );
 
 --
 -- And the mapping from users to their actions
 --
-CREATE TABLE rwb_permissions (
+create table rwb_permissions (
 --
 -- must be a current user on the system.  if a user is deleted
 -- his permissions should be deleted with him
 --
-  name  VARCHAR(64) NOT NULL references rwb_users(name)
-     ON DELETE cascade,
+  name  varchar(64) not null references rwb_users(name)
+     on delete cascade,
 --
 -- must be a current action on the system.  if an action is deleted
 -- then all permissions with that action must also be deleted
 --
-  action VARCHAR(64) NOT NULL references rwb_actions(action)
-     ON DELETE cascade,
+  action varchar(64) not null references rwb_actions(action)
+     on delete cascade,
 --
 -- name->action mappings must be unique
 --
 --
-  constraint perm_unique UNIQUE(name,action)
+  constraint perm_unique unique(name,action)
 );
 
 
@@ -92,34 +106,34 @@ CREATE TABLE rwb_permissions (
 -- of
 --
 create table rwb_cs_ind_to_geo (
--- 
+--
 -- Requester must be a user
 --
   requester varchar(64) not null references rwb_users(name) on delete cascade,
--- 
+--
 -- Submitter must be a user
 -- If this is null, it indicates that the geolocation is requested
 --
   submitter varchar(64) references rwb_users(name) on delete cascade,
 --
 -- Validator must be a user
--- If this is null, it indicates that the geolocation needs to be 
+-- If this is null, it indicates that the geolocation needs to be
 -- validated
 --
   validator varchar(64) references rwb_users(name) on delete cascade,
 --
 -- Validator must not be the submitter
 --
-  constraint val_differ CHECK ((validator is null) or (submitter <> validator)),
+  constraint val_differ check ((validator is null) or (submitter <> validator)),
 --
 -- Request and validation times (Unix timestamps), zeros mean "not done yet"
 --
 -- must be given at record create time
-  request_time NUMBER NOT NULL, 
+  request_time number not null,
 -- given later
-  submission_time NUMBER default 0 not null,
+  submission_time number default 0 not null,
 -- given later
-  validation_time NUMBER default 0 not null,
+  validation_time number default 0 not null,
 --
 -- An individual is identified by the following
 -- references into the individuals table
@@ -143,7 +157,7 @@ create table rwb_cs_ind_to_geo (
 -- Opinions
 --
 create table rwb_opinions (
--- 
+--
 -- Submitter must be a user
 --
   submitter varchar(64) not null references rwb_users(name) on delete cascade,
@@ -162,43 +176,41 @@ create table rwb_opinions (
 -- Create a set of actions
 --
 --
-INSERT INTO rwb_actions VALUES ('manage-users');
-INSERT INTO rwb_actions VALUES ('invite-users');
-INSERT INTO rwb_actions VALUES ('add-users');
-INSERT INTO rwb_actions VALUES ('query-fec-data');
-INSERT INTO rwb_actions VALUES ('query-cs-ind-data');
-INSERT INTO rwb_actions VALUES ('query-opinion-data');
-INSERT INTO rwb_actions VALUES ('give-cs-ind-data');
-INSERT INTO rwb_actions VALUES ('give-opinion-data');
+insert into rwb_actions values ('manage-users');
+insert into rwb_actions values ('invite-users');
+insert into rwb_actions values ('add-users');
+insert into rwb_actions values ('query-fec-data');
+insert into rwb_actions values ('query-cs-ind-data');
+insert into rwb_actions values ('query-opinion-data');
+insert into rwb_actions values ('give-cs-ind-data');
+insert into rwb_actions values ('give-opinion-data');
 
 --
 -- Create the required users
 --
-INSERT INTO rwb_users (name,password,email,referer) VALUES ('root','rootroot','root@root.com','root');
-INSERT INTO rwb_users (name,password,email,referer) VALUES ('anon','anonanon','anon@anon.com','root');
+insert into rwb_users (name,password,email,referer) values ('root','rootroot','root@root.com','root');
+insert into rwb_users (name,password,email,referer) values ('anon','anonanon','anon@anon.com','root');
 
 --
 -- And what they can do  (root can do everything, none can do nothing)
 --
 -- Anon can simply query
 --
-INSERT INTO rwb_permissions (name,action) VALUES('anon','query-fec-data');
-INSERT INTO rwb_permissions (name,action) VALUES('anon','query-opinion-data');
+insert into rwb_permissions (name,action) values('anon','query-fec-data');
+insert into rwb_permissions (name,action) values('anon','query-opinion-data');
 --
 -- Root can do anything
 --
-INSERT INTO rwb_permissions (name,action) VALUES('root','manage-users');
-INSERT INTO rwb_permissions (name,action) VALUES('root','invite-users');
-INSERT INTO rwb_permissions (name,action) VALUES('root','add-users');
-INSERT INTO rwb_permissions (name,action) VALUES('root','query-fec-data');
-INSERT INTO rwb_permissions (name,action) VALUES('root','query-cs-ind-data');
-INSERT INTO rwb_permissions (name,action) VALUES('root','query-opinion-data');
-INSERT INTO rwb_permissions (name,action) VALUES('root','give-cs-ind-data');
-INSERT INTO rwb_permissions (name,action) VALUES('root','give-opinion-data');
+insert into rwb_permissions (name,action) values('root','manage-users');
+insert into rwb_permissions (name,action) values('root','invite-users');
+insert into rwb_permissions (name,action) values('root','add-users');
+insert into rwb_permissions (name,action) values('root','query-fec-data');
+insert into rwb_permissions (name,action) values('root','query-cs-ind-data');
+insert into rwb_permissions (name,action) values('root','query-opinion-data');
+insert into rwb_permissions (name,action) values('root','give-cs-ind-data');
+insert into rwb_permissions (name,action) values('root','give-opinion-data');
 --
 -- A user that's been added will be able to do all but manage-users
 --
-
-
 
 quit;

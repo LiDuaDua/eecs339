@@ -77,6 +77,8 @@ use Time::ParseDate;
 use HTML::Template;
 my $template = HTML::Template->new(filename => 'rwb.html');
 
+
+use Digest::MD5 qw(md5 md5_hex);
 #
 # You need to override these for access to your database
 #
@@ -195,6 +197,7 @@ if ($action eq "login") {
 			# uh oh.  Bogus login attempt.  Make him try again.
 			# don't give him a cookie
 			$logincomplain=1;
+			($user,$password)=("anon","anonanon");
 			$action="base";
 			$run = 1;
 		}
@@ -262,6 +265,45 @@ print header(-expires=>'now', -cookie=>\@outputcookies);
 #
 #print start_html('Red, White, and Blue');
 
+if ($action eq "join") {
+	my $canjoin = 1;
+	my $code;
+	my @invite;
+	my $email;
+	my $referer;
+
+	if(defined(param("code"))){
+		$code = param("code");
+		eval{ @invite = ExecSQL($dbuser,$dbpasswd,"select email,referer from rwb_invites where code=?","ROW",$code);};
+
+		if(!@invite){
+			$canjoin = 0;
+		}else{
+			($email,$referer) = @invite;
+		}
+	}else{
+		$canjoin = 0;
+	}
+	if($canjoin){
+		if ($run){
+			my $error = UserAdd(param("name"),param("password"),param("email"),param("referer"));
+			if(!$error){
+				eval{ ExecSQL($dbuser,$dbpasswd,"delete from rwb_invites where code=?",undef,$code);};
+				print "Success! <a href=\"rwb.pl?act=login&run=1&name=".param("name")."&password=".param("password")."\">Click here to log in.</a>";
+			}
+		}else{
+			print MakeModal("Welcome to RWB! Create your account","join",'<input type="text" class="form-control" name="name" placeholder="Name" required="required" />
+				<input type="password" class="form-control" name="password" placeholder="Password" required="required" />
+				<input type="text" name="email" style="display:none;" value="'.$email.'" />
+				<input type="text" name="referer" style="display:none;" value="'.$referer.'" />
+				<input type="text" name="code" style="display:none;" value="'.$code.'" />');
+
+			$action = "base";
+		}
+	}else{
+		print "Error: Something went wrong. Check your activation code.";
+	}
+}
 
 #
 #
@@ -304,12 +346,31 @@ if ($action eq "base") {
 								<button class="btn btn-primary" type="submit">Login</button>
 							</div>
 						</form>');
+
+		if($logincomplain){
+			print '<div id="logincomplain" style="display:none;"></div>'
+		}
 	} else {
 		$template->param("STATUS" => $user);
 
 		my $status_tmp = '';
 		if (UserCan($user,"give-opinion-data")) {
-			$status_tmp .= '<li><a href="#give-opinion-data" data-toggle="modal">Give Opinion Of Current Location</a></li>'."\n";
+			$status_tmp .= '<li><a href="#give-opinion-data" data-toggle="modal">Give Opinion of Current Location</a></li>'."\n";
+
+			$template->param("GIVEOPINION" => MakeModal("Give Opinion of Current Location","give-opinion-data",'
+				<div class="row">
+					<div class="btn-group col-lg-6 col-lg-offset-3" data-toggle="buttons">
+						<label class="btn btn-danger btn-lg">
+							<input type="radio" name="color" value="red"> Red
+						</label>
+						<label class="btn btn-default btn-lg active">
+							<input type="radio" name="color" value="white"> White
+						</label>
+						<label class="btn btn-primary btn-lg">
+							<input type="radio" name="color" value="blue"> Blue
+						</label>
+					</div>
+				</div>'));
 		}
 		if (UserCan($user,"give-cs-ind-data")) {
 			$status_tmp .= '<li><a href="#give-cs-ind-data" data-toggle="modal">Geolocate Individual Contributors</a></li>'."\n";
@@ -387,9 +448,7 @@ sub MakeModal {
 }
 
 #
-#
 # NEAR
-#
 #
 # Nearby committees, candidates, individuals, and opinions
 #
@@ -468,11 +527,45 @@ if ($action eq "near") {
 
 
 if ($action eq "invite-user") {
-	print h2("Invite User Functionality Is Unimplemented");
+	if (!UserCan($user,"invite-users")) {
+		print "You do not have the required permissions to invite users.";
+	} else {
+		if ($run){
+			my $email=param('email');
+			my $code = md5_hex($email);
+			my $error = UserInvite($code,$email,$user);
+			if ($error) {
+				print "Can't invite user because: $error";
+			} else {
+				print "Invitation sent!";
+			}
+		}
+	}
 }
 
 if ($action eq "give-opinion-data") {
-	print h2("Giving Location Opinion Data Is Unimplemented");
+	if (!UserCan($user,"give-opinion-data")) {
+		print "You do not have the required permissions to give opinion data.";
+	} else {
+		if($run){
+			my $color = param('color');
+
+			if($color == "red"){
+				$color = -1;
+			} elsif($color == "blue"){
+				$color = 1;
+			}else{
+				$color = 0;
+			}
+
+			my $error = UserOpinion($user,$color,param('lat'),param('lng'));
+			if ($error) {
+				print "Can't submit opinion because: $error";
+			} else {
+				print "Opinion submitted!";
+			}
+		}
+	}
 }
 
 if ($action eq "give-cs-ind-data") {
@@ -483,13 +576,9 @@ if ($action eq "give-cs-ind-data") {
 # ADD-USER
 #
 # User Add functionaltiy
-#
-#
-#
-#
 if ($action eq "add-user") {
 	if (!UserCan($user,"add-users") && !UserCan($user,"manage-users")) {
-		print h2('You do not have the required permissions to add users.');
+		print 'You do not have the required permissions to add users.';
 	} else {
 		if ($run) {
 			my $name=param('name');
@@ -510,13 +599,9 @@ if ($action eq "add-user") {
 # DELETE-USER
 #
 # User Delete functionaltiy
-#
-#
-#
-#
 if ($action eq "delete-user") {
 	if (!UserCan($user,"manage-users")) {
-		print h2('You do not have the required permissions to delete users.');
+		print 'You do not have the required permissions to delete users.';
 	} else {
 		if ($run) {
 			my $name=param('name');
@@ -536,13 +621,9 @@ if ($action eq "delete-user") {
 # ADD-PERM-USER
 #
 # User Add Permission functionaltiy
-#
-#
-#
-#
 if ($action eq "add-perm-user") {
 	if (!UserCan($user,"manage-users")) {
-		print h2('You do not have the required permissions to manage user permissions.');
+		print 'You do not have the required permissions to manage user permissions.';
 	} else {
 		if ($run) {
 			my $name=param('name');
@@ -562,13 +643,9 @@ if ($action eq "add-perm-user") {
 # REVOKE-PERM-USER
 #
 # User Permission Revocation functionaltiy
-#
-#
-#
-#
 if ($action eq "revoke-perm-user") {
 	if (!UserCan($user,"manage-users")) {
-		print h2('You do not have the required permissions to manage user permissions.');
+		print 'You do not have the required permissions to manage user permissions.';
 	} else {
 		if ($run) {
 			my $name=param('name');
@@ -586,8 +663,6 @@ if ($action eq "revoke-perm-user") {
 
 #
 # Generate debugging output if anything is enabled.
-#
-#
 if ($debug) {
 	print hr, p, hr,p, h2('Debugging Output');
 	print h3('Parameters');
@@ -608,11 +683,6 @@ if ($debug) {
 	print "</menu>";
 }
 
-#
-# The main line is finished at this point.
-# The remainder includes utilty and other functions
-#
-
 
 #
 # Generate a table of nearby committees
@@ -622,8 +692,9 @@ if ($debug) {
 sub Committees {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
+	my $statement = "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle in (".$cycle.") and latitude>? and latitude<? and longitude>? and longitude<?";
 	eval {
-		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle in (?) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+		@rows = ExecSQL($dbuser, $dbpasswd, $statement,undef,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {
@@ -682,8 +753,9 @@ sub Candidates {
 sub Individuals {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
+	my $statement = "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle in (".$cycle.") and latitude>? and latitude<? and longitude>? and longitude<?";
 	eval {
-		@rows = ExecSQL($dbuser, $dbpasswd, "select latitude, longitude, name, city, state, zip_code, employer, transaction_amnt from cs339.individual natural join cs339.ind_to_geo where cycle in (?) and latitude>? and latitude<? and longitude>? and longitude<?",undef,$cycle,$latsw,$latne,$longsw,$longne);
+		@rows = ExecSQL($dbuser, $dbpasswd, $statement,undef,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {
@@ -785,6 +857,24 @@ sub UserPermTable {
 	}
 }
 
+sub UserInvite {
+	eval { ExecSQL($dbuser,$dbpasswd,"insert into rwb_invites (code,email,referer) values (?,?,?)",undef,@_);};
+	my ($code,$email,$referer) = @_;
+
+	if(!$@){
+		open(MAIL,"| mail -s 'Invitation to RWB!' $email") or die "Can't run mail\n";
+		print MAIL "Click here for your exclusive invitation to RWB: http://murphy.wot.eecs.northwestern.edu/~bsr618/rwb/rwb.pl?act=join&code=$code\n";
+		close(MAIL);
+	}
+
+	return $@;
+}
+
+sub UserOpinion {
+	eval { ExecSQL($dbuser,$dbpasswd,"insert into rwb_opinions (submitter,color,latitude,longitude) values (?,?,?,?)",undef,@_);};
+	return $@;
+}
+
 #
 # Add a user
 # call with name,password,email
@@ -796,6 +886,11 @@ sub UserPermTable {
 sub UserAdd {
 	eval { ExecSQL($dbuser,$dbpasswd,
 		"insert into rwb_users (name,password,email,referer) values (?,?,?,?)",undef,@_);};
+	my ($usr,$a,$b,$c) = @_;
+	GiveUserPerm($usr,"invite-users");
+	GiveUserPerm($usr,"query-fec-data");
+	GiveUserPerm($usr,"query-opinion-data");
+	GiveUserPerm($usr,"give-opinion-data");
 	return $@;
 }
 
@@ -853,8 +948,6 @@ sub ValidUser {
 	}
 }
 
-
-#
 #
 # Check to see if user can do some action
 #
@@ -870,10 +963,6 @@ sub UserCan {
 		return $col[0]>0;
 	}
 }
-
-
-
-
 
 #
 # Given a list of scalars, or a list of references to lists, generates
@@ -932,7 +1021,6 @@ sub MakeTable {
 	}
 	return $out;
 }
-
 
 #
 # Given a list of scalars, or a list of references to lists, generates
@@ -1059,15 +1147,7 @@ sub ExecSQL {
 	return @ret;
 }
 
-
-######################################################################
-#
-# Nothing important after this
-#
-######################################################################
-
-# The following is necessary so that DBD::Oracle can
-# find its butt
+# The following is necessary so that DBD::Oracle can find its butt
 #
 BEGIN {
 	unless ($ENV{BEGIN_BLOCK}) {

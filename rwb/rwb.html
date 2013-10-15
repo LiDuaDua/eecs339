@@ -13,6 +13,35 @@
 			<div class="navbar-header">
 				<a class="navbar-brand" href="#">Red, White, and Blue</a>
 			</div>
+			<ul class="nav navbar-nav">
+				<li class="dropdown">
+					<a class="dropdown-toggle" href="#" data-toggle="dropdown">Filter Types <b class="caret"></b></a>
+					<ul class="dropdown-menu" style="padding-left: 12px;">
+						<div class="checkbox">
+							<label><input type="checkbox" class="showcats" name="committees" checked> Committees</label>
+						</div>
+						<div class="checkbox">
+							<label><input type="checkbox" class="showcats" name="candidates" checked> Candidates</label>
+						</div>
+						<div class="checkbox">
+							<label><input type="checkbox" class="showcats" name="individuals" checked> Individuals</label>
+						</div>
+						<div class="checkbox">
+							<label><input type="checkbox" class="showcats" name="opinion" checked> Opinions</label>
+						</div>
+					</ul>
+				</li>
+			</ul>
+			<ul class="nav navbar-nav">
+				<li class="dropdown">
+					<a class="dropdown-toggle" href="#" data-toggle="dropdown">Filter Cycles <b class="caret"></b></a>
+					<ul class="dropdown-menu">
+						<select multiple class="form-control" id="showcycles">
+							<TMPL_VAR NAME=CYCLES>
+						</select>
+					</ul>
+				</li>
+			</ul>
 			<ul class="nav navbar-nav navbar-right">
 				<li class="dropdown">
 					<a class="dropdown-toggle" href="#" data-toggle="dropdown"><TMPL_VAR NAME=STATUS> <b class="caret"></b></a>
@@ -22,31 +51,19 @@
 				</li>
 			</ul>
 		</nav>
-		<div>
-			<form class="form" id="showcats">
-				Show: <label for="committees"><input type="checkbox" name="committees"> Committees</label>
-				<label for="candidates"><input type="checkbox" name="candidates"> Candidates</label>
-				<label for="individuals"><input type="checkbox" name="individuals"> Individuals</label>
-				<label for="opinion"><input type="checkbox" name="opinion"> Opinions</label>
-
-				<div class="form-group">
-					<select multiple class="form-control" id="showcycles">
-						<TMPL_VAR NAME=CYCLES>
-					</select>
-				</div>
-			</form>
-		</div>
 		<div class="panel panel-default">
 			<div id="color" class="panel-heading"></div>
 			<div id="map" class="panel-bodys"></div>
 		</div>
 		<div class="row">
-			<div id="data" class="col-lg-12" style="display: <TMPL_VAR NAME=DEBUG_DISPLAY>;"></div>
+			<div id="data" class="col-lg-12" style="display: <TMPL_VAR NAME=DEBUG_DISPLAY>;">
+				<pre id="committee_data"></pre>
+				<pre id="candidate_data"></pre>
+				<pre id="individual_data"></pre>
+				<pre id="opinion_data"></pre>
+			</div>
 		</div>
-		<div id="committee_data" style="display: none;"></div>
-		<div id="candidate_data" style="display: none;"></div>
-		<div id="individual_data" style="display: none;"></div>
-		<div id="opinion_data" style="display: none;"></div>
+		<TMPL_VAR NAME=GIVEOPINION>
 		<TMPL_VAR NAME=INVITE-USER>
 		<TMPL_VAR NAME=ADD-USER>
 		<TMPL_VAR NAME=DELETE-USER>
