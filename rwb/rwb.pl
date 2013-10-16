@@ -484,12 +484,21 @@ if ($action eq "near") {
 
 
 	if ($what{committees}) {
-		my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
-		if (!$error) {
+		# my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
+		# if (!$error) {
+		# 	if ($format eq "table") {
+		# 		print "<h2>Nearby committees</h2>$str";
+		# 	} else {
+		# 		print $str;
+		# 	}
+		# }
+
+		my ($sum,$error2) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep'");
+		if (!$error2) {
 			if ($format eq "table") {
-				print "<h2>Nearby committees</h2>$str";
+				print "<h2>Committees Aggregate</h2>$sum";
 			} else {
-				print $str;
+				print $sum;
 			}
 		}
 	}
@@ -513,7 +522,7 @@ if ($action eq "near") {
 			}
 		}
 	}
-	if ($what{opinions}) {
+	if ($what{opinions} && UserCan($user,"query-opinion-data")) {
 		my ($str,$error) = Opinions($latne,$longne,$latsw,$longsw,$cycle,$format);
 		if (!$error) {
 			if ($format eq "table") {
@@ -709,6 +718,36 @@ sub Committees {
 		} else {
 			return (MakeRaw("committee_data","2D",@rows),$@);
 		}
+	}
+}
+
+sub CommitteesAggregate {
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format,$party) = @_;
+	my $sum;
+	my $statement = "SELECT SUM(transaction_amnt) from(
+					SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id
+						FROM cs339.comm_to_cand
+							INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
+							INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id
+							INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle
+							WHERE latitude>? and latitude<? and longitude>? and longitude<? and cs339.comm_to_cand.cycle in (".$cycle.") and cm.cand_pty_affiliation IN (".$party.")
+					UNION
+					SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id
+						FROM cs339.comm_to_comm
+							INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id
+							INNER JOIN cs339.committee_master cm3 ON cs339.comm_to_comm.cmte_id=cm3.cmte_id
+							INNER JOIN cs339.committee_master cm4 ON cs339.comm_to_comm.cycle=cm4.cycle
+							WHERE latitude>? and latitude<? and longitude>? and longitude<? and cs339.comm_to_comm.cycle in (".$cycle.") and cm3.cmte_pty_affiliation IN (".$party."))";
+
+	# my $statement = "SELECT SUM(transaction_amnt) from( SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id 	FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep') UNION SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep'))";
+	eval {
+		$sum = ExecSQL($dbuser,$dbpasswd,$statement,undef,$latsw,$latne,$longsw,$longne,$latsw,$latne,$longsw,$longne);
+	};
+
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return ($sum,$@);#return (MakeTable("committee_aggregate_data","2D",["sum"],@sum),$@);
 	}
 }
 
