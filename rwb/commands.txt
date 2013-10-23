@@ -1,30 +1,19 @@
-SELECT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id
-	FROM cs339.comm_to_cand
-		INNER JOIN cs339.committee_master ON cs339.comm_to_cand.cmte_id=cs339.committee_master.cmte_id
-		INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
-		WHERE cs339.cmte_id_to_geo.latitude>42 and cs339.cmte_id_to_geo.latitude<42.1 and cs339.cmte_id_to_geo.longitude>-87.85 and cs339.cmte_id_to_geo.longitude<-87.41
-UNION
-SELECT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id
-	FROM cs339.comm_to_comm
-		INNER JOIN cs339.committee_master ON cs339.comm_to_comm.cmte_id=cs339.committee_master.cmte_id
-		INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
-		WHERE cs339.cmte_id_to_geo.latitude>42 and cs339.cmte_id_to_geo.latitude<42.1 and cs339.cmte_id_to_geo.longitude>-87.85 and cs339.cmte_id_to_geo.longitude<-87.41;
-
-
 SELECT SUM(transaction_amnt) from(
 SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id
 	FROM cs339.comm_to_cand
 		INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
-		INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id
-		INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle
-		WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep')
+			and latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41
+		INNER JOIN cs339.candidate_master ON cs339.comm_to_cand.cand_id=cs339.candidate_master.cand_id
+		 and cs339.comm_to_cand.cycle=cs339.candidate_master.cycle and cs339.candidate_master.cand_pty_affiliation IN ('Rep','REP','rep')
+		and cs339.comm_to_cand.cycle in ('0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900')
 UNION
 SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id
 	FROM cs339.comm_to_comm
 		INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id
-		INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id
-		INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle
-		WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep'));
+			and latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41
+		INNER JOIN cs339.committee_master ON cs339.comm_to_comm.cmte_id=cs339.committee_master.cmte_id
+			and cs339.comm_to_comm.cycle=cs339.committee_master.cycle and cs339.committee_master.cmte_pty_affiliation IN ('Rep','REP','rep')
+		WHERE cs339.comm_to_comm.cycle in ('0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900'));
 
 
 select sum(transaction_amnt) from (SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep'));
@@ -32,10 +21,20 @@ select sum(transaction_amnt) from (SELECT DISTINCT cs339.comm_to_cand.transactio
 
 select sum(transaction_amnt) from (SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id 	FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep'));
 
-SELECT SUM(transaction_amnt) from( SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id 	FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep') UNION SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep'));
+SELECT SUM(transaction_amnt) from( SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep') UNION SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep') and cs339.comm_to_comm.cycle in ('0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900'));
 
 
 SELECT SUM(transaction_amnt) from( SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>41 and latitude<42.06366601870469 and longitude>-87.68791441543578 and longitude<-85 and cs339.comm_to_cand.cycle in ('0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900') and cm.cand_pty_affiliation IN ('Rep','REP','rep') UNION SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm3 ON cs339.comm_to_comm.cmte_id=cm3.cmte_id INNER JOIN cs339.committee_master cm4 ON cs339.comm_to_comm.cycle=cm4.cycle WHERE latitude>41 and latitude<42.06366601870469 and longitude>-87.68791441543578 and longitude<-85 and cs339.comm_to_comm.cycle in ('0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900') and cm3.cmte_pty_affiliation IN ('Rep','REP','rep'))
+
+
+
+SELECT sum(transaction_amnt) FROM (
+	SELECT DISTINCT cs339.individual.transaction_amnt,cs339.individual.cmte_id,cs339.individual.cycle,cs339.individual.tran_id
+	FROM cs339.individual
+		INNER JOIN cs339.cmte_id_to_geo ON cs339.individual.cmte_id=cs339.cmte_id_to_geo.cmte_id
+		INNER JOIN cs339.committee_master cm ON cs339.individual.cmte_id=cm.cmte_id
+		INNER JOIN cs339.committee_master cm2 ON cs339.individual.cycle=cm2.cycle
+		WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Dem','DEM','dem'));
 
 
 

@@ -79,6 +79,8 @@ my $template = HTML::Template->new(filename => 'rwb.html');
 
 
 use Digest::MD5 qw(md5 md5_hex);
+
+use POSIX;
 #
 # You need to override these for access to your database
 #
@@ -484,21 +486,12 @@ if ($action eq "near") {
 
 
 	if ($what{committees}) {
-		# my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
-		# if (!$error) {
-		# 	if ($format eq "table") {
-		# 		print "<h2>Nearby committees</h2>$str";
-		# 	} else {
-		# 		print $str;
-		# 	}
-		# }
-
-		my ($sum,$error2) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep'");
-		if (!$error2) {
+		my ($str,$error) = Committees($latne,$longne,$latsw,$longsw,$cycle,$format);
+		if (!$error) {
 			if ($format eq "table") {
-				print "<h2>Committees Aggregate</h2>$sum";
+				print "<h2>Nearby committees</h2>$str";
 			} else {
-				print $sum;
+				print $str;
 			}
 		}
 	}
@@ -534,6 +527,107 @@ if ($action eq "near") {
 	}
 }
 
+if ($action eq "aggregate") {
+	my $latne = param("latne");
+	my $longne = param("longne");
+	my $latsw = param("latsw");
+	my $longsw = param("longsw");
+	my $whatparam = param("what");
+	my $format = param("format");
+	my $cycle = param("cycle");
+	my %what;
+
+	$format = "table" if !defined($format);
+	$cycle = "'1112'" if !defined($cycle);
+
+	if (!defined($whatparam) || $whatparam eq "all") {
+		%what = ( committees => 1,
+			candidates => 1,
+			individuals =>1,
+			opinions => 1);
+	} else {
+		map {$what{$_}=1} split(/\s*,\s*/,$whatparam);
+	}
+
+
+	if ($what{committees}) {
+		my ($rsum,$error) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep','R'");
+		my ($dsum,$error2) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Dem','DEM','dem','D'");
+
+		while(!$rsum || !$dsum){
+			$latne += 0.01;
+			$latsw -= 0.01;
+			$longne += 0.01;
+			$longsw -= 0.01;
+
+			($rsum,$error) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep','R'");
+			($dsum,$error2) = CommitteesAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Dem','DEM','dem','D'");
+		}
+
+		my $total = $rsum + $dsum;
+		my $rshade = floor(255 * $rsum / $total);
+		my $bshade = floor(255 * $dsum / $total);
+		if (!$error) {
+			print '<div class="col-sm-4" id="committee_aggregate_data" style="background-color:rgb('.$rshade.',0,'.$bshade.');">Committee Contributions: <span class="label label-danger">$'.$rsum.'</span><span class="label label-primary">$'.$dsum.'</span></div>';
+		}else{
+			print "An error occured.";
+		}
+	}
+	# if ($what{candidates}) {
+	# 	my ($str,$error) = Candidates($latne,$longne,$latsw,$longsw,$cycle,$format);
+	# 	if (!$error) {
+	# 		if ($format eq "table") {
+	# 			print "<h2>Nearby candidates</h2>$str";
+	# 		} else {
+	# 			print $str;
+	# 		}
+	# 	}
+	# }
+	if ($what{individuals}) {
+		my ($rsum,$error) = IndividualsAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep','R'");
+		my ($dsum,$error2) = IndividualsAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Dem','DEM','dem','D'");
+
+		while(!$rsum || !$dsum){
+			$latne += 0.01;
+			$latsw -= 0.01;
+			$longne += 0.01;
+			$longsw -= 0.01;
+
+			($rsum,$error) = IndividualsAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Rep','REP','rep','R'");
+			($dsum,$error2) = IndividualsAggregate($latne,$longne,$latsw,$longsw,$cycle,$format,"'Dem','DEM','dem','D'");
+		}
+
+		my $total = $rsum + $dsum;
+		my $rshade = floor(255 * $rsum / $total);
+		my $bshade = floor(255 * $dsum / $total);
+		if (!$error) {
+			print '<div class="col-sm-4" id="individual_aggregate_data" style="background-color:rgb('.$rshade.',0,'.$bshade.');">Individual Contributions: <span class="label label-danger">$'.$rsum.'</span><span class="label label-primary">$'.$dsum.'</span></div>';
+		}else{
+			print "An error occured.";
+		}
+	}
+	if ($what{opinions} && UserCan($user,"query-opinion-data")) {
+		my ($avg,$stddev,$error) = OpinionsAggregate($latne,$longne,$latsw,$longsw,$cycle,$format);
+
+		my $rshade = 0;
+		my $bshade = 0;
+		if($avg < 0){
+			$rshade = floor(-1 * $avg * 255);
+		}else{
+			$bshade = floor($avg * 255);
+		}
+
+		$avg = floor($avg * 100) / 100;
+		$stddev = floor($stddev * 1000) / 1000;
+
+		if (!$error) {
+			print '<div class="col-sm-4" id="opinion_aggregate_data" style="background-color:rgb('.$rshade.',0,'.$bshade.');">Opinions: Average '.$avg.', StdDev '.$stddev.'</div>';
+		}else{
+			print "An error occured.";
+		}
+	}
+}
+
 
 if ($action eq "invite-user") {
 	if (!UserCan($user,"invite-users")) {
@@ -557,11 +651,11 @@ if ($action eq "give-opinion-data") {
 		print "You do not have the required permissions to give opinion data.";
 	} else {
 		if($run){
-			my $color = param('color');
+			my $color;
 
-			if($color == "red"){
+			if(param('color') eq "red"){
 				$color = -1;
-			} elsif($color == "blue"){
+			} elsif(param('color') eq "blue"){
 				$color = 1;
 			}else{
 				$color = 0;
@@ -701,6 +795,8 @@ if ($debug) {
 sub Committees {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
 	my @rows;
+
+	# dangerous. should include code that confirms $cycle is a string containing only numbers, single quotes, and commas
 	my $statement = "select latitude, longitude, cmte_nm, cmte_pty_affiliation, cmte_st1, cmte_st2, cmte_city, cmte_st, cmte_zip from cs339.committee_master natural join cs339.cmte_id_to_geo where cycle in (".$cycle.") and latitude>? and latitude<? and longitude>? and longitude<?";
 	eval {
 		@rows = ExecSQL($dbuser, $dbpasswd, $statement,undef,$latsw,$latne,$longsw,$longne);
@@ -723,31 +819,32 @@ sub Committees {
 
 sub CommitteesAggregate {
 	my ($latne,$longne,$latsw,$longsw,$cycle,$format,$party) = @_;
-	my $sum;
+	my @sum;
 	my $statement = "SELECT SUM(transaction_amnt) from(
-					SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id
-						FROM cs339.comm_to_cand
-							INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
-							INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id
-							INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle
-							WHERE latitude>? and latitude<? and longitude>? and longitude<? and cs339.comm_to_cand.cycle in (".$cycle.") and cm.cand_pty_affiliation IN (".$party.")
-					UNION
-					SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id
-						FROM cs339.comm_to_comm
-							INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id
-							INNER JOIN cs339.committee_master cm3 ON cs339.comm_to_comm.cmte_id=cm3.cmte_id
-							INNER JOIN cs339.committee_master cm4 ON cs339.comm_to_comm.cycle=cm4.cycle
-							WHERE latitude>? and latitude<? and longitude>? and longitude<? and cs339.comm_to_comm.cycle in (".$cycle.") and cm3.cmte_pty_affiliation IN (".$party."))";
+				SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id
+					FROM cs339.comm_to_cand
+						INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id
+							and latitude>? and latitude<? and longitude>? and longitude<?
+						INNER JOIN cs339.candidate_master ON cs339.comm_to_cand.cand_id=cs339.candidate_master.cand_id
+						 and cs339.comm_to_cand.cycle=cs339.candidate_master.cycle and cs339.candidate_master.cand_pty_affiliation IN (".$party.")
+						and cs339.comm_to_cand.cycle in (".$cycle.")
+				UNION
+				SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id
+					FROM cs339.comm_to_comm
+						INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id
+							and latitude>? and latitude<? and longitude>? and longitude<?
+						INNER JOIN cs339.committee_master ON cs339.comm_to_comm.cmte_id=cs339.committee_master.cmte_id
+							and cs339.comm_to_comm.cycle=cs339.committee_master.cycle and cs339.committee_master.cmte_pty_affiliation IN (".$party.")
+						WHERE cs339.comm_to_comm.cycle in (".$cycle."))";
 
-	# my $statement = "SELECT SUM(transaction_amnt) from( SELECT DISTINCT cs339.comm_to_cand.transaction_amnt,cs339.comm_to_cand.cmte_id,cs339.comm_to_cand.cycle,cs339.comm_to_cand.tran_id 	FROM cs339.comm_to_cand INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_cand.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.candidate_master cm ON cs339.comm_to_cand.cand_id=cm.cand_id INNER JOIN cs339.candidate_master cm2 ON cs339.comm_to_cand.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cand_pty_affiliation IN ('Rep','REP','rep') UNION SELECT DISTINCT cs339.comm_to_comm.transaction_amnt,cs339.comm_to_comm.cmte_id,cs339.comm_to_comm.cycle,cs339.comm_to_comm.tran_id FROM cs339.comm_to_comm INNER JOIN cs339.cmte_id_to_geo ON cs339.comm_to_comm.cmte_id=cs339.cmte_id_to_geo.cmte_id INNER JOIN cs339.committee_master cm ON cs339.comm_to_comm.cmte_id=cm.cmte_id INNER JOIN cs339.committee_master cm2 ON cs339.comm_to_comm.cycle=cm2.cycle WHERE latitude>42 and latitude<42.1 and longitude>-87.85 and longitude<-87.41 and cm.cmte_pty_affiliation IN ('Rep','REP','rep'))";
 	eval {
-		$sum = ExecSQL($dbuser,$dbpasswd,$statement,undef,$latsw,$latne,$longsw,$longne,$latsw,$latne,$longsw,$longne);
+		@sum = ExecSQL($dbuser,$dbpasswd,$statement,"COL",$latsw,$latne,$longsw,$longne,$latsw,$latne,$longsw,$longne);
 	};
 
 	if ($@) {
 		return (undef,$@);
 	} else {
-		return ($sum,$@);#return (MakeTable("committee_aggregate_data","2D",["sum"],@sum),$@);
+		return ($sum[0],$@);#return (MakeTable("committee_aggregate_data","2D",["sum"],@sum),$@);
 	}
 }
 
@@ -812,6 +909,28 @@ sub Individuals {
 	}
 }
 
+sub IndividualsAggregate {
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format,$party) = @_;
+	my @sum;
+	my $statement = "SELECT sum(transaction_amnt) FROM (
+			SELECT DISTINCT cs339.individual.transaction_amnt,cs339.individual.cmte_id,cs339.individual.cycle,cs339.individual.tran_id
+				FROM cs339.individual
+					INNER JOIN cs339.cmte_id_to_geo ON cs339.individual.cmte_id=cs339.cmte_id_to_geo.cmte_id
+						and latitude>? and latitude<? and longitude>? and longitude<?
+					INNER JOIN cs339.committee_master ON cs339.individual.cmte_id=cs339.committee_master.cmte_id
+						and cs339.individual.cycle=cs339.committee_master.cycle and cs339.individual.cycle IN (".$cycle.")
+						and cs339.committee_master.cmte_pty_affiliation IN (".$party."))";
+
+	eval {
+		@sum = ExecSQL($dbuser,$dbpasswd,$statement,"COL",$latsw,$latne,$longsw,$longne);
+	};
+
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return ($sum[0],$@);
+	}
+}
 
 #
 # Generate a table of nearby opinions
@@ -838,6 +957,28 @@ sub Opinions {
 		} else {
 			return (MakeRaw("opinion_data","2D",@rows),$@);
 		}
+	}
+}
+
+sub OpinionsAggregate {
+	my ($latne,$longne,$latsw,$longsw,$cycle,$format) = @_;
+	my @avg;
+	my @stddev;
+
+	my $statement = "SELECT AVG(color) FROM rwb_opinions WHERE latitude>? and latitude<? and longitude>? and longitude<?";
+	eval {
+		@avg = ExecSQL($dbuser,$dbpasswd,$statement,"COL",$latsw,$latne,$longsw,$longne);
+	};
+
+	$statement = "SELECT STDDEV(color) FROM rwb_opinions WHERE latitude>? and latitude<? and longitude>? and longitude<?";
+	eval {
+		@stddev = ExecSQL($dbuser,$dbpasswd,$statement,"COL",$latsw,$latne,$longsw,$longne);
+	};
+
+	if ($@) {
+		return (undef,$@);
+	} else {
+		return ($avg[0],$stddev[0],$@);
 	}
 }
 

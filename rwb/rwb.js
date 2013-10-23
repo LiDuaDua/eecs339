@@ -10,12 +10,18 @@
 //
 
 // Global variables
-var map, usermark, markers = [], userlocation = {}, categories = "all", cycles = "'1112'",
+var map, usermark, markers = [], userlocation = {}, categories = "all",
+cycles = "'0102','0304','0506','0708','0910','1112','1314','7980','8182','8384','8586','8788','8990','9192','9394','9596','9798','9900'",
 
 UpdateMapById = function(id, tag){
 	var data = $("#"+id).html();
 	if(data && data.length > 0){
-		var rows  = data.split("\n");
+		var rows  = data.split("\n"),
+			colors = {
+				"-1":"rep.png",
+				"0":"nut.png",
+				"1":"dem.png"
+			};
 
 		for (var i=0; i<rows.length; i++) {
 			var cols = rows[i].split("\t"),
@@ -23,12 +29,6 @@ UpdateMapById = function(id, tag){
 				lng = cols[1];
 
 			if(tag == "OPINION"){
-				var colors = {
-					"-1":"rep.png",
-					"0":"nut.png",
-					"1":"dem.png"
-				};
-
 				markers.push(new google.maps.Marker({
 					map: map,
 					position: new google.maps.LatLng(lat,lng),
@@ -84,7 +84,7 @@ ViewShift = function(){
 
 	Delay(function(){
 		$("#color").css("background-color","white")
-			.text("Querying...("+ne.lat()+","+ne.lng()+") to ("+sw.lat()+","+sw.lng()+")");
+			.text("Querying...("+Math.round(ne.lat())+","+Math.round(ne.lng())+")");
 
 		$.ajax({
 			url: "rwb.pl",
@@ -208,12 +208,41 @@ $(document).ready(function(){
 		ViewShift();
 	});
 
+	$("#getaggregate").on("click",function(){
+		NProgress.start();
+		$(this).button("loading");
+
+		var bounds = map.getBounds(),
+			ne = bounds.getNorthEast(),
+			sw = bounds.getSouthWest();
+
+		$.ajax({
+			url: "./rwb.pl",
+			async: true,
+			data: {
+				act:	"aggregate",
+				cycle:	cycles,
+				latne:	ne.lat(),
+				longne:	ne.lng(),
+				latsw:	sw.lat(),
+				longsw:	sw.lng(),
+				format:	"raw",
+				what:	categories,
+			},
+			success: function(data){
+				NProgress.done();
+				$("#getaggregate").button("reset");
+				$("#summary").html(data);
+			}
+		});
+	});
+
 	//pop up join modal if it exists
 	if($("#join").length){
 		$("#join").modal("show");
 	}
 
-	//lazy, making login complaint if empty div exists
+	//lazy: making login complaint if empty div exists
 	if($("#logincomplain").length){
 		$("<div />").addClass("alert alert-warning").text("Login failed. Try again.").prependTo(".container");
 		$("<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-hidden=\"true\">&times;</button>").appendTo(".alert-warning");
