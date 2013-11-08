@@ -1,16 +1,19 @@
-drop table portfolio_users;
+DROP TABLE portfolio_users;
+DROP TABLE portfolio_portfolios
 
-create table portfolio_users (
-	username varchar(64) not null primary key,
-	password varchar(64) not null
+CREATE TABLE portfolio_users (
+	username varchar(64) NOT NULL PRIMARY KEY,
+	password varchar(32) NOT NULL
 );
 
-create table portfolio_portfolio (
-	id not null primary key,
-	user references portfolio_users(username) ON DELETE CASCADE ON UPDATE CASCADE,
+CREATE TABLE portfolio_portfolios (
+	id INT NOT NULL PRIMARY KEY,
+	username REFERENCES portfolio_users(username) ON DELETE CASCADE
+);
 
-)
+INSERT INTO portfolio_users (username,password) VALUES ('root','b4b8daf4b8ea9d39568719e1e320076f');
 
-insert into portfolio_users (username,password) VALUES (root,rootroot);
-
-quit;
+CREATE TABLE portfolio_transactions (
+	timestamp TIMESTAMP,
+	portfolio REFERENCES portfolio_portfolios(id) ON DELETE CASCADE
+);
