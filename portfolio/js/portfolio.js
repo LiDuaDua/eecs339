@@ -3,8 +3,11 @@
 window.portfolio = (function(){
 	'use strict';
 
-	var init = function(){
-		//here's where things get lazy. If portfolio_username and portfolio_password are set, assume valid credentials
+	//state variables
+	var portfolios, currentPortfolio = 0,
+
+	init = function(){
+		//if portfolio_username and portfolio_password are set, assume valid credentials
 		if(localStorage.portfolio_full_name && localStorage.portfolio_username && localStorage.portfolio_password){
 			startSession();
 		}else{
@@ -24,7 +27,7 @@ window.portfolio = (function(){
 
 			$.getJSON('./ajax/login.php', data, function(reply){
 				if(reply){
-					localStorage.portfolio_full_name = reply['FULL_NAME'];
+					localStorage.portfolio_full_name = reply.FULL_NAME;
 					localStorage.portfolio_username = data.username;
 					localStorage.portfolio_password = data.password;
 					startSession();
@@ -64,6 +67,13 @@ window.portfolio = (function(){
 		var template = _.template($('#template-user-session-navbar').html());
 		$('#navbar-items').html(template({full_name: localStorage.portfolio_full_name}));
 
+		$.getJSON('./ajax/getUserPortfolios.php',{username: localStorage.portfolio_username},function(reply){
+			if(reply.length > 0){
+				portfolios = reply;
+				renderPortfolio(currentPortfolio);
+			}
+		});
+
 		$('#logout').on('click',function(){
 			localStorage.portfolio_full_name = '';
 			localStorage.portfolio_username = '';
@@ -73,9 +83,32 @@ window.portfolio = (function(){
 		});
 
 		$('#new-portfolio-form').on('submit', function(){
-			$.getJSON('./ajax/addPortfolio.php',{name: $(this).find('input:first').val()}, function(reply){
+			$.getJSON('./ajax/addPortfolio.php',{
+				name: $(this).find('input:first').val(),
+				username: localStorage.portfolio_username
+			}, function(reply){
 				if(reply.status){
 					$('#new-portfolio').modal('hide');
+					currentPortfolio = portfolios.length;
+					startSession();
+				}
+			});
+
+			return false;
+		});
+
+		$('#deposit-withdraw-form').on('submit', function(){
+			var ammount = parseFloat($(this).find('input:first').val(),10) *
+				($(this).find('.btn.active>input').attr('id') == 'deposit' ? 1 : -1);
+
+			$.getJSON('./ajax/modifyCash.php',{portfolio_id: portfolios[currentPortfolio].PORTFOLIO_ID, ammount: ammount},function(reply){
+				if(reply.status){
+					$('#deposit-withdraw').modal('hide');
+					portfolios[currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[currentPortfolio].CASH_ACCOUNT,10) + ammount;
+					renderPortfolio(currentPortfolio);
+				}else{
+					//while debugging
+					alert(reply.message);
 				}
 			});
 
@@ -83,10 +116,25 @@ window.portfolio = (function(){
 		});
 	},
 
+	renderPortfolio = function(ind){
+		var template = _.template($('#template-portfolio').html()),
+		list = [];
+
+		for(var i=0; i<portfolios.length; i++){
+			list.push(portfolios[i].NAME);
+		}
+
+		$('#content').html(template({
+			name: portfolios[ind].NAME,
+			portfolios: list,
+			balance: portfolios[ind].CASH_ACCOUNT
+		}));
+	},
+
 	addAlert = function(text){
 		$('<div />').addClass('alert alert-warning')
 			.html(text + ' <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>')
-			.prependTo('.content');
+			.prependTo('#content');
 	};
 
 	return {

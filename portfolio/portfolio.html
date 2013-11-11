@@ -12,6 +12,10 @@
 		input{
 			margin-bottom: 5px;
 		}
+
+		a.active{
+			color: black;
+		}
 	</style>
 	<title>Portfolio</title>
 </head>
@@ -32,7 +36,7 @@
 			</div>
 		</div>
 		<div class="row">
-			<div class="col-lg-12 content"></div>
+			<div class="col-lg-12" id="content"></div>
 		</div>
 	</div>
 	<div id="signup" class="modal fade in">
@@ -89,11 +93,11 @@
 						<div class="row">
 							<div class="input-group col-lg-7">
 								<span class="input-group-addon">$</span>
-								<input type="number" name="ammount" value="0.00" class="form-control" required="required" />
+								<input type="number" name="ammount" value="0.00" min="0.00" class="form-control" required="required" />
 							</div>
 							<div class="col-lg-5">
 								<div class="btn-group btn-group-justified" data-toggle="buttons">
-									<label class="btn btn-success">
+									<label class="btn btn-success active">
 										<input type="radio" name="types" id="deposit"> Deposit
 									</label>
 									<label class="btn btn-danger">
@@ -185,9 +189,11 @@
 		<div class="row">
 			<div class="col-lg-2">
 				<h4>Portfolios</h4>
-				<% _.each(portfolios, function(name){ %>
-					<a class="btn btn-link <%= (active_name === name ? 'active' : '') %>"><%= name %></a>
+				<ul>
+				<% _.each(portfolios, function(item_name){ %>
+					<li><a href="#" class="portfolio-item <%= (name === item_name ? 'active' : '') %>"><%= item_name %></a></li>
 				<% }); %>
+				</ul>
 				<h4>Current Balance:</h4>
 				<div class="alert alert-success"><h2 style="margin:0;text-align:center">$<%= balance %></h2></div>
 				<a href="#" class="btn btn-link" data-target="#deposit-withdraw" data-toggle="modal">Deposit/Withdraw</a>

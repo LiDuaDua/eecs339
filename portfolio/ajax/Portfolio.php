@@ -110,4 +110,30 @@ class Portfolio
 
 		return $list;
 	}
+
+	public static function modifyCash ($portfolio,$ammount)
+	{
+		self::initializeConnection();
+		try {
+			$statement = oci_parse(self::$dbConn,
+				"UPDATE portfolio_portfolios
+				SET cash_account=cash_account + :ammount
+				WHERE portfolio_id=:portfolio");
+			oci_bind_by_name($statement, ":ammount", $ammount);
+			oci_bind_by_name($statement, ":portfolio", $portfolio);
+			$r = oci_execute($statement);
+
+			if($r){
+				$status = array("status"=>1);
+			}else{
+				$err = oci_error($statement);
+				$status = array("status"=>0,"message"=>$err['message']);
+			}
+		} catch (Exception $e) {
+			echo "Error: " . $e['message'];
+			die();
+		}
+
+		return $status;
+	}
 }
