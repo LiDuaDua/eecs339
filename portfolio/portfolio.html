@@ -8,75 +8,206 @@
 	<link rel="stylesheet" href="./css/bootstrap.css">
 	<link rel="stylesheet" href="./css/bootstrap-theme.css">
 	<link rel="stylesheet" href="./css/nprogress.css">
+	<style>
+		input{
+			margin-bottom: 5px;
+		}
+	</style>
 	<title>Portfolio</title>
 </head>
 <body>
 	<div class="container">
-		<div class="row">
-			<div class="col-lg-10 col-lg-offset-1">
-				<div class="navbar">
-					<a class="navbar-brand" href="#">Portfolio</a>
-					<ul class="nav navbar-nav navbar-right">
-						<li class="dropdown">
-							<a class="dropdown-toggle" href="#" data-toggle="dropdown">Current Portfolio <b class="caret"></b></a>
-							<ul class="dropdown-menu">
-								<TMPL_VAR NAME=DROPDOWN>
-							</ul>
-						</li>
-					</ul>
-				</div>
-				<div class="row">
-					<div class="alert alert-info" style="float: right;">Cash Amount: $0</div>
-					<div class="col-lg-12">
-						<table class="table table-striped">
-							<thead>
-								<tr>
-									<th>Symbol</th>
-									<th>Blah1</th>
-									<th>Blah2</th>
-									<th>Blah3</th>
-									<th>Blah4</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>APPL</td>
-									<td>1</td>
-									<td>2</td>
-									<td>3</td>
-									<td>4</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</div>
+		<div class="navbar navbar-default" role="navigation">
+			<div class="navbar-header">
+				<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse">
+					<span class="sr-only">Toggle navigation</span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+					<span class="icon-bar"></span>
+				</button>
+				<a class="navbar-brand" href="#">Portfolio</a>
+			</div>
+			<div class="collapse navbar-collapse" id="navbar-collapse">
+				<ul class="nav navbar-nav navbar-right" id="navbar-items"></ul>
 			</div>
 		</div>
+		<div class="row">
+			<div class="col-lg-12 content"></div>
+		</div>
 	</div>
-	<div id="login" class="modal fade in">
+	<div id="signup" class="modal fade in">
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
 					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-					<h4 class="modal-title">Sign-in to Portfolio</h4>
+					<h4 class="modal-title">Sign Up for Portfolio</h4>
 				</div>
 				<div class="modal-body">
-					<form role="form" onsubmit="$(\'.modal\').modal(\'hide\'); return false;">
+					<form role="form" id="signup-form">
 						<div class="col-lg-12">
-							<input type="text" name="username" placeholder="Username" class="form-control" />
-							<input type="password" name="password" placeholder="Password" class="form-control" />
+							<input type="text" name="full_name" placeholder="Full Name" class="form-control" required="required" />
+							<input type="text" name="username" placeholder="Username" class="form-control" required="required" />
+							<input type="password" name="password" placeholder="Password" class="form-control" required="required" />
+						</div>
+						<div class="col-md-12 text-right">
+							<button class="btn btn-primary" type="submit">Register</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="new-portfolio" class="modal fade in">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title">Create New Portfolio</h4>
+				</div>
+				<div class="modal-body">
+					<form role="form" id="new-portfolio-form">
+						<div class="col-lg-12">
+							<input type="text" name="name" placeholder="Portfolio Name" class="form-control" required="required" />
 						</div>
 						<div class="col-md-12 text-right">
 							<button class="btn btn-primary" type="submit">Submit</button>
 						</div>
 					</form>
 				</div>
-			</div><!-- /.modal-content -->
-		</div><!-- /.modal-dialog -->
-	</div><!-- /.modal -->
+			</div>
+		</div>
+	</div>
+	<div id="deposit-withdraw" class="modal fade in">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title">Make Deposit / Withdrawal</h4>
+				</div>
+				<div class="modal-body">
+					<form role="form" id="deposit-withdraw-form">
+						<div class="row">
+							<div class="input-group col-lg-7">
+								<span class="input-group-addon">$</span>
+								<input type="number" name="ammount" value="0.00" class="form-control" required="required" />
+							</div>
+							<div class="col-lg-5">
+								<div class="btn-group btn-group-justified" data-toggle="buttons">
+									<label class="btn btn-success">
+										<input type="radio" name="types" id="deposit"> Deposit
+									</label>
+									<label class="btn btn-danger">
+										<input type="radio" name="types" id="withdraw"> Withdraw
+									</label>
+								</div>
+							</div>
+						</div>
+						<div class="text-right" style="margin-top:20px;">
+							<button class="btn btn-primary" type="submit">Submit</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="add-transaction" class="modal fade in">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title">Add Transaction</h4>
+				</div>
+				<div class="modal-body">
+					<form role="form" id="add-transaction-form">
+						<div class="form-group col-xs-3">
+							<label for="symbol">Symbol</label>
+							<input type="text" name="symbol" class="form-control" required="required" />
+						</div>
+						<div class="form-group col-xs-3">
+							<label for="shares">Shares</label>
+							<input type="number" name="shares" class="form-control" min="1" value="1" required="required" />
+						</div>
+						<div class="form-group col-xs-3">
+							<label for="cost">Cost Per Share</label>
+							<input type="text" name="cost" class="form-control" disabled="disabled" />
+						</div>
+						<div class="form-group col-xs-3">
+							<label for="subtotal">Subtotal</label>
+							<input type="text" name="subtotal" class="form-control" disabled="disabled" />
+						</div>
+						<div class="text-right col-lg-12">
+							<button class="btn btn-primary" type="submit">Submit</button>
+						</div>
+					</form>
+				</div>
+			</div>
+		</div>
+	</div>
 	<script type="text/javascript" src="./js/jquery.min.js"></script>
+	<script type="text/javascript" src="./js/underscore.js"></script>
 	<script type="text/javascript" src="./js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="./js/md5.js"></script>
 	<script type="text/javascript" src="./js/portfolio.js"></script>
+	<script type="text/javascript">
+		$(document).ready(function(){
+			portfolio.init();
+		});
+	</script>
+	<script type="text/template" id="template-new-user-navbar">
+		<li><a href="#" data-target="#signup" data-toggle="modal">Sign Up</a></li>
+		<li class="dropdown">
+			<a class="dropdown-toggle" href="#" data-toggle="dropdown">Login <b class="caret"></b></a>
+			<ul class="dropdown-menu">
+				<form role="form" id="login-form">
+					<div class="col-lg-12">
+						<input type="text" name="username" class="form-control" placeholder="Username" required="required" />
+						<input type="password" name="password" class="form-control" placeholder="Password" required="required" />
+					</div>
+					<div class="col-md-12 text-right">
+						<button class="btn btn-primary" type="submit">Login</button>
+					</div>
+				</form>
+			</ul>
+		</li>
+	</script>
+	<script type="text/template" id="template-user-session-navbar">
+		<li class="dropdown">
+			<a class="dropdown-toggle" href="#" data-toggle="dropdown"><%= full_name %> <b class="caret"></b></a>
+			<ul class="dropdown-menu">
+				<li><a href="#" data-target="#new-portfolio" data-toggle="modal">Create New Portfolio</a></li>
+				<li><a href="#">Other Action</a></li>
+			</ul>
+		</li>
+		<li><a href="" id="logout">Logout</a></li>
+	</script>
+	<script type="text/template" id="template-portfolio">
+		<legend><%= name %> Overview</legend>
+		<div class="row">
+			<div class="col-lg-2">
+				<h4>Portfolios</h4>
+				<% _.each(portfolios, function(name){ %>
+					<a class="btn btn-link <%= (active_name === name ? 'active' : '') %>"><%= name %></a>
+				<% }); %>
+				<h4>Current Balance:</h4>
+				<div class="alert alert-success"><h2 style="margin:0;text-align:center">$<%= balance %></h2></div>
+				<a href="#" class="btn btn-link" data-target="#deposit-withdraw" data-toggle="modal">Deposit/Withdraw</a>
+				<a href="#" class="btn btn-link" data-target="#add-transaction" data-toggle="modal">Add Transaction</a>
+			</div>
+			<div class="col-lg-10">
+				<table class="table table-striped table-condensed">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Symbol</th>
+							<th>Shares</th>
+							<th>Open</th>
+							<th>High</th>
+							<th>Low</th>
+						</tr>
+					</thead>
+				</table>
+			</div>
+		</div>
+	</script>
 </body>
 </html>
