@@ -111,65 +111,64 @@ class Portfolio
 		return $list;
 	}
 
-	public static function addStockHoldings()
+	public static function addStockHoldings ()
 	{
 		self::initializeConnection();
-                try {
-                        $statement = oci_parse(self::$dbConn,
-                                "INSERT INTO portfolio_stock_holdings (id,portfolio,price,shares,symbol)
-                                VALUES (:id,:portfolio,:price,:shares,:symbol)");
-                        oci_bind_by_name($statement, ":id", $id);
-                        oci_bind_by_name($statement, ":portfolio", $portfolio);
+		try {
+			$statement = oci_parse(self::$dbConn,
+					"INSERT INTO portfolio_stock_holdings (id,portfolio,price,shares,symbol)
+					VALUES (:id,:portfolio,:price,:shares,:symbol)");
+			oci_bind_by_name($statement, ":id", $id);
+			oci_bind_by_name($statement, ":portfolio", $portfolio);
 			oci_bind_by_name($statement,":price",$price);
 			oci_bind_by_name($statement,":shares",$shares);
 			oci_bind_by_name($statement,":symbol",$symbol);
-                        $r = oci_execute($statement);
+			$r = oci_execute($statement);
 
-                        if($r){
-                                $status = array("status"=>1);
-                        }else{
-                                $err = oci_error($statement);
-                                $status = array("status"=>0,"message"=>$err['message']);
-                        }
-                } catch (Exception $e) {
-                        echo "Error: " . $e['message'];
-                        die();
-                }
+			if($r){
+					$status = array("status"=>1);
+			}else{
+					$err = oci_error($statement);
+					$status = array("status"=>0,"message"=>$err['message']);
+			}
+		} catch (Exception $e) {
+				echo "Error: " . $e['message'];
+				die();
+		}
 
-                return $status;
-
+		return $status;
 	}
 
-        public static function removeStockHoldings()
+	public static function removeStockHoldings ()
 	{
 		self::initializeConnection();
 		try{
 			$statement = oci_parse(self::$dbConn,
-				"DELETE 
+				"DELETE
 				FROM portfolio_stock_holdings
 				WHERE id=:id");
 			oci_bind_by_name($statement,":id",$id);
-                 	$r = oci_execute($statement);
+					$r = oci_execute($statement);
 
-                        if($r){
-                                $status = array("status"=>1);
-                        }else{
-                                $err = oci_error($statement);
-                                $status = array("status"=>0,"message"=>$err['message']);
-                        }
-                } catch (Exception $e) {
-                        echo "Error: " . $e['message'];
-                        die();
-                }
+						if($r){
+								$status = array("status"=>1);
+						}else{
+								$err = oci_error($statement);
+								$status = array("status"=>0,"message"=>$err['message']);
+						}
+				} catch (Exception $e) {
+						echo "Error: " . $e['message'];
+						die();
+				}
 
-                return $status;
+				return $status;
 	}
 
 	public static function getStockHoldings($portfolio)
 	{
 		self::initializeConnection();
 		$list = array();
-		try{
+		try {
 			$statement = oci_parse(self::$dbConn,
 				"SELECT *
 				FROM portfolio_stock_holdings
