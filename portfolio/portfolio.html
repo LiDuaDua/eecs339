@@ -189,9 +189,9 @@
 		<div class="row">
 			<div class="col-lg-2">
 				<h4>Portfolios</h4>
-				<ul>
+				<ul class="nav nav-pills nav-stacked" id="portfolio-list">
 				<% _.each(portfolios, function(item_name){ %>
-					<li><a href="#" class="portfolio-item <%= (name === item_name ? 'active' : '') %>"><%= item_name %></a></li>
+					<li class="portfolio-item<%= (name === item_name ? ' active' : '') %>"><a href="#"><%= item_name %></a></li>
 				<% }); %>
 				</ul>
 				<h4>Current Balance:</h4>

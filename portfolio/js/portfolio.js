@@ -129,6 +129,17 @@ window.portfolio = (function(){
 			portfolios: list,
 			balance: portfolios[ind].CASH_ACCOUNT
 		}));
+
+		$('#portfolio-list').on('click','.portfolio-item',function(){
+			if(!$(this).hasClass('active')){
+				var list = $('#portfolio-list').find('.portfolio-item');
+				currentPortfolio = list.index($(this));
+				list.removeClass('active');
+				list.eq(currentPortfolio).addClass('active');
+
+				renderPortfolio(currentPortfolio);
+			}
+		});
 	},
 
 	addAlert = function(text){

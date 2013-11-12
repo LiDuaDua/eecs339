@@ -136,4 +136,24 @@ class Portfolio
 
 		return $status;
 	}
+
+	public static function getSymbols ()
+	{
+		self::initializeConnection();
+		$list = array();
+		try {
+			$statement = oci_parse(self::$dbConn,
+				"SELECT DISTINCT symbol FROM cs339.StocksSymbols");
+			oci_execute($statement);
+
+			while($row = oci_fetch_array($statement, OCI_NUM)){
+				$list[] = $row[0];
+			}
+		} catch (Exception $e) {
+			echo "Error: " . $e['message'];
+			die();
+		}
+
+		return $list;
+	}
 }
