@@ -1,5 +1,6 @@
 <?php
 header('Content-type: text/html; charset=utf-8');
+include_once "./vars.php";
 
 class DatabaseOCI
 {
@@ -14,13 +15,10 @@ class DatabaseOCI
         PutEnv("ORACLE_BASE=/raid/oracle11g/app/oracle/product/11.2.0.1.0");
 
         if (!self::$_instance) {
-            $username = "bsr618";
-            $password = "zf8pO0pRn";
-
             // $iters = 0;
 
             // while (!self::$_instance && $iters < 20) {
-                self::$_instance = oci_connect($username, $password);
+                self::$_instance = oci_connect($GLOBALS['USERNAME'], $GLOBALS['PASSWORD']);
             //     echo "waiting";
             //     usleep(5000);
             //     $iters++;

@@ -124,27 +124,51 @@
 				</div>
 				<div class="modal-body">
 					<form role="form" id="add-transaction-form">
-						<div class="form-group col-xs-3">
-							<label for="symbol">Symbol</label>
-							<input id="symbol-input" type="text" name="symbol" class="form-control" required="required" style="padding-left: 4px"/>
+						<div class="row">
+							<div class="form-group col-xs-3">
+								<label for="type">Type</label>
+								<select name="type" class="form-control">
+									<option>Buy</option>
+									<option>Sell</option>
+								</select>
+							</div>
+							<div class="form-group col-xs-3">
+								<label for="symbol">Symbol</label>
+								<input id="symbol-input" type="text" name="symbol" class="form-control" required="required" style="padding-left: 4px"/>
+							</div>
+							<div class="form-group col-xs-3">
+								<label for="shares">Shares</label>
+								<input id="symbol-count" type="number" name="shares" class="form-control" min="1" value="1" required="required" />
+							</div>
+							<div class="form-group col-xs-3">
+								<label for="cost">$/Share</label>
+								<input id="symbol-cost" type="text" name="cost" class="form-control" disabled="disabled" />
+							</div>
 						</div>
-						<div class="form-group col-xs-3">
-							<label for="shares">Shares</label>
-							<input type="number" name="shares" class="form-control" min="1" value="1" required="required" />
+						<div class="row">
+							<div class="form-group col-xs-4 col-xs-offset-8">
+								<label for="total">Total</label>
+								<input id="symbol-total" type="text" name="total" class="form-control" disabled="disabled" />
+							</div>
 						</div>
-						<div class="form-group col-xs-3">
-							<label for="cost">Cost Per Share</label>
-							<input type="text" name="cost" class="form-control" disabled="disabled" />
-						</div>
-						<div class="form-group col-xs-3">
-							<label for="subtotal">Subtotal</label>
-							<input type="text" name="subtotal" class="form-control" disabled="disabled" />
-						</div>
-						<div class="text-right col-lg-12">
-							<button class="btn btn-primary" type="submit">Submit</button>
+						<div class="row">
+							<div class="col-lg-12 text-right">
+								<button class="btn btn-primary" type="submit">Submit</button>
+							</div>
 						</div>
 					</form>
 				</div>
+			</div>
+		</div>
+	</div>
+	<div id="stock-info" class="modal fade in">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+					<h4 class="modal-title">Stock Info</h4>
+				</div>
+				<div class="modal-body" id="stock-chart" style="height: 500px;"></div>
 			</div>
 		</div>
 	</div>
@@ -152,6 +176,7 @@
 	<script type="text/javascript" src="./js/underscore.js"></script>
 	<script type="text/javascript" src="./js/bootstrap.min.js"></script>
 	<script type="text/javascript" src="./js/typeahead.js"></script>
+	<script type="text/javascript" src="http://code.highcharts.com/stock/highstock.js"></script>
 	<script type="text/javascript" src="./js/md5.js"></script>
 	<script type="text/javascript" src="./js/portfolio.js"></script>
 	<script type="text/javascript">

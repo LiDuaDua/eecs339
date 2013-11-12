@@ -1,10 +1,10 @@
 /*jshint indent: 4, quotmark: single, strict: true */
-/* global $: false, _: false, CryptoJS: false */
+/* global $: false, _: false, CryptoJS: false, alert: false */
 window.portfolio = (function(){
 	'use strict';
 
 	//state variables
-	var portfolios, currentPortfolio = 0,
+	var portfolios, currentPortfolio = 0, symbols = [],
 	LS = localStorage,
 
 	init = function(){
@@ -76,10 +76,27 @@ window.portfolio = (function(){
 		});
 
 		$.getJSON('./ajax/getSymbols.php',function(reply){
+			symbols = reply;
+
 			$('#symbol-input').typeahead({
 				name: 'stock-symbols',
-				local: reply
+				local: symbols
 			});
+
+			$('#symbol-input').on('typeahead:closed',function(){
+				var sym = $(this).val(),
+					ind = symbols.indexOf(sym);
+
+				if(ind !== -1){
+					$.getJSON('./ajax/quote.php',{symbol: [ symbols[ind] ]},function(reply){
+						$('#symbol-cost').val(reply[symbols[ind]].close);
+					});
+				}
+			});
+
+			// $('#add-transaction-form').on('submit',function(){
+			// if($(this))
+			// })
 		});
 
 		$('#logout').on('click',function(){
@@ -147,6 +164,20 @@ window.portfolio = (function(){
 
 				renderPortfolio(currentPortfolio);
 			}
+		});
+	},
+
+	stockDetails = function(symbol){
+		$.getJSON('./ajax/quotehist.php',{symbol: symbol}, function(data){
+			$('#stock-chart').highcharts('StockChart',{
+				title: {
+					text: symbol + ' Stock History'
+				},
+				series: [{
+					name: symbol,
+					data: data
+				}]
+			});
 		});
 	},
 
