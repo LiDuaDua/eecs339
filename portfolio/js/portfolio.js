@@ -5,10 +5,11 @@ window.portfolio = (function(){
 
 	//state variables
 	var portfolios, currentPortfolio = 0,
+	LS = localStorage,
 
 	init = function(){
 		//if portfolio_username and portfolio_password are set, assume valid credentials
-		if(localStorage.portfolio_full_name && localStorage.portfolio_username && localStorage.portfolio_password){
+		if(LS.portfolio_full_name && LS.portfolio_username && LS.portfolio_password){
 			startSession();
 		}else{
 			newUser();
@@ -27,9 +28,9 @@ window.portfolio = (function(){
 
 			$.getJSON('./ajax/login.php', data, function(reply){
 				if(reply){
-					localStorage.portfolio_full_name = reply.FULL_NAME;
-					localStorage.portfolio_username = data.username;
-					localStorage.portfolio_password = data.password;
+					LS.portfolio_full_name = reply.FULL_NAME;
+					LS.portfolio_username = data.username;
+					LS.portfolio_password = data.password;
 					startSession();
 				}else{
 					addAlert('Login Failed');
@@ -50,9 +51,9 @@ window.portfolio = (function(){
 			$.getJSON('./ajax/signup.php',data,function(reply){
 				if(reply.status){
 					$('#signup').modal('hide');
-					localStorage.portfolio_full_name = data.full_name;
-					localStorage.portfolio_username = data.username;
-					localStorage.portfolio_password = data.password;
+					LS.portfolio_full_name = data.full_name;
+					LS.portfolio_username = data.username;
+					LS.portfolio_password = data.password;
 				}else{
 					//while debugging
 					alert(reply.message);
@@ -65,19 +66,26 @@ window.portfolio = (function(){
 
 	startSession = function(){
 		var template = _.template($('#template-user-session-navbar').html());
-		$('#navbar-items').html(template({full_name: localStorage.portfolio_full_name}));
+		$('#navbar-items').html(template({full_name: LS.portfolio_full_name}));
 
-		$.getJSON('./ajax/getUserPortfolios.php',{username: localStorage.portfolio_username},function(reply){
+		$.getJSON('./ajax/getUserPortfolios.php',{username: LS.portfolio_username},function(reply){
 			if(reply.length > 0){
 				portfolios = reply;
 				renderPortfolio(currentPortfolio);
 			}
 		});
 
+		$.getJSON('./ajax/getSymbols.php',function(reply){
+			$('#symbol-input').typeahead({
+				name: 'stock-symbols',
+				local: reply
+			});
+		});
+
 		$('#logout').on('click',function(){
-			localStorage.portfolio_full_name = '';
-			localStorage.portfolio_username = '';
-			localStorage.portfolio_password = '';
+			LS.portfolio_full_name = '';
+			LS.portfolio_username = '';
+			LS.portfolio_password = '';
 
 			newUser();
 		});
@@ -85,7 +93,7 @@ window.portfolio = (function(){
 		$('#new-portfolio-form').on('submit', function(){
 			$.getJSON('./ajax/addPortfolio.php',{
 				name: $(this).find('input:first').val(),
-				username: localStorage.portfolio_username
+				username: LS.portfolio_username
 			}, function(reply){
 				if(reply.status){
 					$('#new-portfolio').modal('hide');

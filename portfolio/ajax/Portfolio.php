@@ -116,15 +116,16 @@ class Portfolio
 		self::initializeConnection();
 		$list = array();
 		try{
-			$statement = oci_parse((self::$dbConn,
+			$statement = oci_parse(self::$dbConn,
 				"SELECT *
 				FROM portfolio_stock_holdings
 				WHERE portfolio=:portfolio");
 			oci_bind_by_name($statement, ":portfolio", $portfolio);
 			oci_execute($statement);
-		} catch(Exception $e)
+		} catch(Exception $e) {
 			echo "Error: " . $e['message'];
 			die();
+		}
 	}
 
 	public static function modifyCash ($portfolio,$ammount)

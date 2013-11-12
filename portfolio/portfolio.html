@@ -7,6 +7,7 @@
 	<meta name="apple-mobile-web-app-status-bar-style" content="black" /> -->
 	<link rel="stylesheet" href="./css/bootstrap.css">
 	<link rel="stylesheet" href="./css/bootstrap-theme.css">
+	<link rel="stylesheet" href="./css/typeahead.js-bootstrap.css">
 	<link rel="stylesheet" href="./css/nprogress.css">
 	<style>
 		input{
@@ -125,7 +126,7 @@
 					<form role="form" id="add-transaction-form">
 						<div class="form-group col-xs-3">
 							<label for="symbol">Symbol</label>
-							<input type="text" name="symbol" class="form-control" required="required" />
+							<input id="symbol-input" type="text" name="symbol" class="form-control" required="required" style="padding-left: 4px"/>
 						</div>
 						<div class="form-group col-xs-3">
 							<label for="shares">Shares</label>
@@ -150,6 +151,7 @@
 	<script type="text/javascript" src="./js/jquery.min.js"></script>
 	<script type="text/javascript" src="./js/underscore.js"></script>
 	<script type="text/javascript" src="./js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="./js/typeahead.js"></script>
 	<script type="text/javascript" src="./js/md5.js"></script>
 	<script type="text/javascript" src="./js/portfolio.js"></script>
 	<script type="text/javascript">
@@ -185,7 +187,7 @@
 		<li><a href="" id="logout">Logout</a></li>
 	</script>
 	<script type="text/template" id="template-portfolio">
-		<legend><%= name %> Overview</legend>
+		<legend><%= name %>: Overview</legend>
 		<div class="row">
 			<div class="col-lg-2">
 				<h4>Portfolios</h4>
