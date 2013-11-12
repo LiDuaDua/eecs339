@@ -125,7 +125,7 @@
 				<div class="modal-body">
 					<form role="form" id="add-transaction-form">
 						<div class="row">
-							<div class="form-group col-xs-3">
+							<div class="form-group col-xs-2">
 								<label for="type">Type</label>
 								<select name="type" class="form-control">
 									<option>Buy</option>
@@ -138,17 +138,19 @@
 							</div>
 							<div class="form-group col-xs-3">
 								<label for="shares">Shares</label>
-								<input id="symbol-count" type="number" name="shares" class="form-control" min="1" value="1" required="required" />
+								<input id="symbol-shares" type="number" name="shares" class="form-control" min="1" value="1" required="required" />
 							</div>
-							<div class="form-group col-xs-3">
+							<div class="form-group col-xs-4">
 								<label for="cost">$/Share</label>
 								<input id="symbol-cost" type="text" name="cost" class="form-control" disabled="disabled" />
 							</div>
 						</div>
 						<div class="row">
-							<div class="form-group col-xs-4 col-xs-offset-8">
-								<label for="total">Total</label>
-								<input id="symbol-total" type="text" name="total" class="form-control" disabled="disabled" />
+							<div class="col-xs-4 col-sm-offset-8">
+								<div class="form-group">
+									<label for="total">Total</label>
+									<input id="symbol-total" type="text" name="total" class="form-control" disabled="disabled" />
+								</div>
 							</div>
 						</div>
 						<div class="row">

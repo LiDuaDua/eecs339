@@ -88,15 +88,21 @@ window.portfolio = (function(){
 					ind = symbols.indexOf(sym);
 
 				if(ind !== -1){
-					$.getJSON('./ajax/quote.php',{symbol: [ symbols[ind] ]},function(reply){
-						$('#symbol-cost').val(reply[symbols[ind]].close);
+					$.getJSON('./ajax/quote.php',{symbol: symbols[ind]},function(reply){
+						var close = parseFloat(reply[symbols[ind]].close,10),
+							shares = parseInt($('#symbol-shares').val(),10);
+						$('#symbol-cost').val(close);
+						$('#symbol-total').val(close*shares);
 					});
 				}
 			});
 
-			// $('#add-transaction-form').on('submit',function(){
-			// if($(this))
-			// })
+			$('#symbol-shares').on('change',function(){
+				var shares = parseInt($(this).val(),10),
+					close = parseFloat($('#symbol-cost').val(),10);
+
+				$('#symbol-total').val(shares*close);
+			});
 		});
 
 		$('#logout').on('click',function(){
@@ -136,6 +142,12 @@ window.portfolio = (function(){
 					alert(reply.message);
 				}
 			});
+
+			return false;
+		});
+
+		$('#add-transaction-form').on('submit',function(){
+
 
 			return false;
 		});
