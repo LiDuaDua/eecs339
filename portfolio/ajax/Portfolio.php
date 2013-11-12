@@ -111,33 +111,92 @@ class Portfolio
 		return $list;
 	}
 
-	public static function addStockHoldings ()
+	public static function addTransaction($portfolio_id, $shareChange, $symbol, $buyOrSell)
 	{
 		self::initializeConnection();
-		try {
-			$statement = oci_parse(self::$dbConn,
-					"INSERT INTO portfolio_stock_holdings (id,portfolio,price,shares,symbol)
-					VALUES (:id,:portfolio,:price,:shares,:symbol)");
-			oci_bind_by_name($statement, ":id", $id);
-			oci_bind_by_name($statement, ":portfolio", $portfolio);
-			oci_bind_by_name($statement,":price",$price);
-			oci_bind_by_name($statement,":shares",$shares);
-			oci_bind_by_name($statement,":symbol",$symbol);
-			$r = oci_execute($statement);
+		$totalPrice = 0;
+		try{
 
-			if($r){
-					$status = array("status"=>1);
-			}else{
-					$err = oci_error($statement);
-					$status = array("status"=>0,"message"=>$err['message']);
+			$statement = oci_parse(self::$dbConn,
+				"SELECT shares
+				FROM portfolio_stock_holdings
+				WHERE symbol=:symbol");
+
+			oci_bind_by_name($statement, ":username", $symbol);
+			oci_execute($statement);
+			//$status = oci_fetch_assoc($statement);
+			if ($buyOrSell == 1){
+				//This is for buying stock
+				$innerLoop = oci_parse(self::$dbConn,
+					"UPDATE portfolio_stock_holdings
+					SET shares=shares + :spareChange
+					WHERE portfolio_id=:portfolio");
+				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
+				oci_execute($innerLoop);
+
+				$shareAmount = oci_parse(self::$dbConn,
+					"SELECT price
+					FROM portfolio_stock_holdings
+					WHERE symbol=:symbol");
+				oci_bind_by_name($shareAmount, ":symbol", $symbol);
+				oci_execute($shareAmount);
+
+				$shareAmount = $shareAmount * $statement;
+				$shareAmount = -1 * abs($shareAmount);
+
+				modifyCash($portfolio_id,$shareAmount)
+
 			}
-		} catch (Exception $e) {
-				echo "Error: " . $e['message'];
-				die();
+			elseif ($buyOrSell == -1) {
+				$innerLoop = oci_parse(self::$dbConn, 
+					"UPDATE portfolio_stock_holdings
+					SET shares=shares - :spareChange
+					WHERE portfolio_id=:portfolio");
+				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
+				oci_execute($innerLoop);
+
+				$shareAmount = oci_parse(self::$dbConn,
+					"SELECT price
+					FROM portfolio_stock_holdings
+					WHERE symbol=:symbol");
+				oci_bind_by_name($shareAmount, ":symbol", $symbol);
+				oci_execute($shareAmount);
+
+				$shareAmount = $shareAmount * $statement;
+
+				modifyCash($portfolio_id,$shareAmount)
+			}
 		}
 
-		return $status;
 	}
+
+	// public static function addStockHoldings ($)
+	// {
+	// 	self::initializeConnection();
+	// 	try {
+	// 		$statement = oci_parse(self::$dbConn,
+	// 				"INSERT INTO portfolio_stock_holdings (id,portfolio,price,shares,symbol)
+	// 				VALUES (:id,:portfolio,:price,:shares,:symbol)");
+	// 		oci_bind_by_name($statement, ":id", $id);
+	// 		oci_bind_by_name($statement, ":portfolio", $portfolio);
+	// 		oci_bind_by_name($statement,":price",$price);
+	// 		oci_bind_by_name($statement,":shares",$shares);
+	// 		oci_bind_by_name($statement,":symbol",$symbol);
+	// 		$r = oci_execute($statement);
+
+	// 		if($r){
+	// 				$status = array("status"=>1);
+	// 		}else{
+	// 				$err = oci_error($statement);
+	// 				$status = array("status"=>0,"message"=>$err['message']);
+	// 		}
+	// 	} catch (Exception $e) {
+	// 			echo "Error: " . $e['message'];
+	// 			die();
+	// 	}
+
+	// 	return $status;
+	// }
 
 	public static function removeStockHoldings ()
 	{
