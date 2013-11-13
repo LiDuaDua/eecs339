@@ -111,54 +111,68 @@ class Portfolio
 		return $list;
 	}
 
-	public static function addTransaction($portfolio_id, $shares, $type, $symbol,$cost, $total)
+	public static function addTransaction($portfolio, $shares, $type, $symbol, $cost, $total)
 	{
 		self::initializeConnection();
-		$totalPrice = 0;
-		try{
+		try {
+			if ($type == "buy")
+			{
+				// "INSERT INTO portfolio_stock_holdings (portfolio,symbol,shares)
+				// 	VALUES (:portfolio, :symbol, :shares_count)
+				// 	ON DUPLICATE KEY UPDATE shares=shares + :shares_count"
+				$statement = oci_parse(self::$dbConn,
+					"call stock_transaction(:portfolio, :symbol, :shares_count)");
+				oci_bind_by_name($statement, ":portfolio", $portfolio);
+				oci_bind_by_name($statement, ":symbol", $symbol);
+				oci_bind_by_name($statement, ":shares_count", $shares);
+				oci_execute($statement, OCI_NO_AUTO_COMMIT);
 
-			$statement = oci_parse(self::$dbConn,
-				"SELECT shares
-				FROM portfolio_stock_holdings
-				WHERE symbol=:symbol");
-
-			oci_bind_by_name($statement, ":username", $symbol);
-			oci_execute($statement);
-			//$status = oci_fetch_assoc($statement);
-			if ($type == 1){
-				//This is for buying stock--add to stock holdings and subtract from the cash account
-				$innerLoop = oci_parse(self::$dbConn,
-					"INSERT into portfolio_stock_holdings (symbol,shares)values (:symbol,:shares) 
-					on duplicate key UPDATE SET shares=shares + :shares
-					WHERE portfolio_id=:portfolio");
-				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
-				oci_bind_by_name($innerLoop,":symbol", $symbol);
-				oci_bind_by_name($innerLoop,":shares",$shares);
-				oci_execute($innerLoop);
-
-				$shareAmount = -1 * abs($total);
-
-				modifyCash($portfolio_id,$shareAmount);
-
+				$status = self::modifyCash($portfolio,(floatval($total) * -1));
 			}
-			elseif ($type == 0) {
-				//This is for selling stock--subtract the number of shares you sold from stock holdings and add total to the cash account 
-				$innerLoop = oci_parse(self::$dbConn,
-					"INSER into portfolio_stock_holdings (symbol,shares) values (:symbol,:shares)
-					on duplicate key UPDATE portfolio_stock_holdings SET shares=shares - :shares
-					WHERE portfolio_id=:portfolio");
-				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
-				oci_bind_by_name($innerLoop,":symbol",$symbol);
-				oci_bind_by_name($innerLoop,"shares",$shares);
-				oci_execute($innerLoop);
+			else
+			{
+				$statement = oci_parse(self::$dbConn,
+					"UPDATE portfolio_stock_holdings SET shares=shares - :shares
+					WHERE portfolio=:portfolio AND symbol=:symbol");
+				oci_bind_by_name($statement, ":portfolio", $portfolio);
+				oci_bind_by_name($statement,":symbol",$symbol);
+				oci_bind_by_name($statement,"shares",$shares);
+				oci_execute($statement, OCI_NO_AUTO_COMMIT);
 
-				modifyCash($portfolio_id,$total);
+				$status = self::modifyCash($portfolio,floatval($total));
 			}
 		} catch (Exception $e) {
 			echo "Error: " . $e['message'];
 			die();
 		}
 
+		return $status;
+	}
+
+	public static function modifyCash ($portfolio,$ammount)
+	{
+		self::initializeConnection();
+		try {
+			$statement = oci_parse(self::$dbConn,
+				"UPDATE portfolio_portfolios
+				SET cash_account=cash_account + :ammount
+				WHERE id=:portfolio");
+			oci_bind_by_name($statement, ":ammount", $ammount);
+			oci_bind_by_name($statement, ":portfolio", $portfolio);
+			$r = oci_execute($statement);
+
+			if($r){
+				$status = array("status"=>1);
+			}else{
+				$err = oci_error($statement);
+				$status = array("status"=>0,"message"=>$err['message']);
+			}
+		} catch (Exception $e) {
+			echo "Error: " . $e['message'];
+			die();
+		}
+
+		return $status;
 	}
 
 	// public static function addStockHoldings ($)
@@ -189,32 +203,32 @@ class Portfolio
 	// 	return $status;
 	// }
 
-	public static function removeStockHoldings ($id)
-	{
-		self::initializeConnection();
-		try{
-			$statement = oci_parse(self::$dbConn,
-				"DELETE
-				FROM portfolio_stock_holdings
-				WHERE id=:id");
-			oci_bind_by_name($statement,":id",$id);
-			$r = oci_execute($statement);
+	// public static function removeStockHoldings ($id)
+	// {
+	// 	self::initializeConnection();
+	// 	try{
+	// 		$statement = oci_parse(self::$dbConn,
+	// 			"DELETE
+	// 			FROM portfolio_stock_holdings
+	// 			WHERE id=:id");
+	// 		oci_bind_by_name($statement,":id",$id);
+	// 		$r = oci_execute($statement);
 
-			if($r){
-				$status = array("status"=>1);
-			}else{
-				$err = oci_error($statement);
-				$status = array("status"=>0,"message"=>$err['message']);
-			}
-		} catch (Exception $e) {
-				echo "Error: " . $e['message'];
-				die();
-		}
+	// 		if($r){
+	// 			$status = array("status"=>1);
+	// 		}else{
+	// 			$err = oci_error($statement);
+	// 			$status = array("status"=>0,"message"=>$err['message']);
+	// 		}
+	// 	} catch (Exception $e) {
+	// 			echo "Error: " . $e['message'];
+	// 			die();
+	// 	}
 
-		return $status;
-	}
+	// 	return $status;
+	// }
 
-	public static function getStockHoldings($portfolio)
+	public static function getStockHoldings ($portfolio)
 	{
 		self::initializeConnection();
 		$list = array();
@@ -231,6 +245,13 @@ class Portfolio
 		} catch(Exception $e) {
 			echo "Error: " . $e['message'];
 			die();
+		}
+
+		$len = count($list);
+		for($i=0; $i<$len; $i++){
+			$quote = self::selectOrFetchStock($list[$i]['SYMBOL']);
+
+			$list[$i] = array_merge($list[$i],$quote);
 		}
 
 		return $list;
@@ -284,32 +305,6 @@ class Portfolio
 				die();
 			}
 		}
-	}
-
-	public static function modifyCash ($portfolio,$ammount)
-	{
-		self::initializeConnection();
-		try {
-			$statement = oci_parse(self::$dbConn,
-				"UPDATE portfolio_portfolios
-				SET cash_account=cash_account + :ammount
-				WHERE portfolio_id=:portfolio");
-			oci_bind_by_name($statement, ":ammount", $ammount);
-			oci_bind_by_name($statement, ":portfolio", $portfolio);
-			$r = oci_execute($statement);
-
-			if($r){
-				$status = array("status"=>1);
-			}else{
-				$err = oci_error($statement);
-				$status = array("status"=>0,"message"=>$err['message']);
-			}
-		} catch (Exception $e) {
-			echo "Error: " . $e['message'];
-			die();
-		}
-
-		return $status;
 	}
 
 	public static function getSymbols ()

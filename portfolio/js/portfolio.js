@@ -1,5 +1,5 @@
 /*jshint indent: 4, quotmark: single, strict: true */
-/* global $: false, _: false, CryptoJS: false, alert: false */
+/* global $: false, _: false, CryptoJS: false, NProgress: false */
 window.portfolio = (function(){
 	'use strict';
 
@@ -8,12 +8,21 @@ window.portfolio = (function(){
 	LS = localStorage,
 
 	init = function(){
-		//if portfolio_username and portfolio_password are set, assume valid credentials
 		if(LS.portfolio_full_name && LS.portfolio_username && LS.portfolio_password){
-			startSession();
+			login({
+				full_name: LS.portfolio_full_name,
+				username: LS.portfolio_username,
+				password: LS.portfolio_password
+			});
 		}else{
 			newUser();
 		}
+
+		NProgress.configure({
+			trickleRate: 0.1
+		});
+		$(document).on('ajaxStart', NProgress.start);
+		$(document).on('ajaxStop', NProgress.done);
 	},
 
 	newUser = function(){
@@ -26,16 +35,7 @@ window.portfolio = (function(){
 
 			data.password = CryptoJS.MD5(data.password).toString();
 
-			$.getJSON('./ajax/login.php', data, function(reply){
-				if(reply){
-					LS.portfolio_full_name = reply.FULL_NAME;
-					LS.portfolio_username = data.username;
-					LS.portfolio_password = data.password;
-					startSession();
-				}else{
-					addAlert('Login Failed');
-				}
-			});
+			login(data);
 
 			return false;
 		});
@@ -51,6 +51,7 @@ window.portfolio = (function(){
 			$.getJSON('./ajax/signup.php',data,function(reply){
 				if(reply.status){
 					$('#signup').modal('hide');
+					$('#signup-form').find('.alert-info').hide();
 					LS.portfolio_full_name = data.full_name;
 					LS.portfolio_username = data.username;
 					LS.portfolio_password = data.password;
@@ -60,12 +61,11 @@ window.portfolio = (function(){
 							currentPortfolio = 0;
 							startSession();
 						}else{
-							alert(reply.message);
+							addAlert(reply.message);
 						}
 					});
 				}else{
-					//while debugging
-					alert(reply.message);
+					$('#signup-form').find('.alert-info').text(reply.message).show();
 				}
 			});
 
@@ -84,21 +84,115 @@ window.portfolio = (function(){
 			}
 		});
 
-		$.getJSON('./ajax/getSymbols.php',function(reply){
-			symbols = reply;
+		if(symbols.length === 0){ loadSymbols(); }
 
-			$('#symbol-input').typeahead({
-				name: 'stock-symbols',
-				local: symbols
+		$('#logout').on('click',logout);
+
+		$('#new-portfolio-form').on('submit', function(){
+			$.getJSON('./ajax/addPortfolio.php',{
+				name: $(this).find('input:first').val(),
+				username: LS.portfolio_username
+			}, function(reply){
+				$('#new-portfolio').modal('hide');
+				if(reply.status){
+					currentPortfolio = portfolios.length;
+					startSession();
+				}else{
+					addAlert(reply.message);
+				}
 			});
 
+			return false;
+		});
+
+		$('#deposit-withdraw-form').on('submit', function(){
+			var ammount = parseFloat($(this).find('input:first').val(),10) *
+				($(this).find('.btn.active>input').attr('id') == 'deposit' ? 1 : -1);
+
+			$.getJSON('./ajax/modifyCash.php',{portfolio_id: portfolios[currentPortfolio].ID, ammount: ammount},function(reply){
+				if(reply.status){
+					$('#deposit-withdraw').modal('hide');
+					$('#deposit-withdraw').find('.alert-info').hide();
+					portfolios[currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[currentPortfolio].CASH_ACCOUNT,10) + ammount;
+					$('#cash-account').text('$'+portfolios[currentPortfolio].CASH_ACCOUNT);
+				}else{
+					$('#deposit-withdraw').find('.alert-info').text(reply.message).show();
+				}
+			});
+
+			return false;
+		});
+
+		$('#add-transaction-form').on('submit',function(){
+			var data = {};
+			$(this).find('.form-control').each(function(i, el){
+				data[el.name] = el.value;
+			});
+			data.portfolio_id = portfolios[currentPortfolio].ID;
+
+			$.getJSON('./ajax/addTransaction.php',data,function(reply){
+				console.log(reply);
+			});
+
+			return false;
+		});
+	},
+
+	renderPortfolio = function(ind){
+		$.getJSON('./ajax/getStockHoldings.php',{portfolio: portfolios[currentPortfolio].ID},function(reply){
+			var template = _.template($('#template-portfolio').html()),
+			list = [];
+
+			for(var i=0; i<portfolios.length; i++){
+				list.push(portfolios[i].NAME);
+			}
+
+			$('#content').html(template({
+				name: portfolios[ind].NAME,
+				portfolios: list,
+				balance: portfolios[ind].CASH_ACCOUNT,
+				stocks: reply
+			}));
+
+			$('#portfolio-list').on('click','.portfolio-item',function(){
+				if(!$(this).hasClass('active')){
+					var list = $('#portfolio-list').find('.portfolio-item');
+					currentPortfolio = list.index($(this));
+					list.removeClass('active');
+					list.eq(currentPortfolio).addClass('active');
+
+					renderPortfolio(currentPortfolio);
+				}
+			});
+		});
+	},
+
+	stockDetails = function(symbol){
+		$.getJSON('./ajax/quotehist.php',{symbol: symbol}, function(data){
+			$('#stock-info').modal('show');
+			$('#stock-chart').highcharts('StockChart',{
+				title: {
+					text: symbol + ' Stock History'
+				},
+				series: [{
+					name: symbol,
+					data: data
+				}]
+			});
+		});
+	},
+
+	loadSymbols = function(){
+		$.getJSON('./ajax/getSymbols.php',function(reply){
+			symbols = reply;
+			$('#symbol-input').typeahead({name: 'stock-symbols', local: symbols});
 			$('#symbol-input').on('typeahead:closed',function(){
 				var sym = $(this).val(),
 					ind = symbols.indexOf(sym);
 
 				if(ind !== -1){
 					$.getJSON('./ajax/quote.php',{symbol: symbols[ind]},function(reply){
-						var close = parseFloat(reply[symbols[ind]].close,10),
+						var close = parseFloat(reply.CLOSE,10),
 							shares = parseInt($('#symbol-shares').val(),10);
 						$('#symbol-cost').val(close);
 						$('#symbol-total').val(close*shares);
@@ -113,93 +207,28 @@ window.portfolio = (function(){
 				$('#symbol-total').val(shares*close);
 			});
 		});
-
-		$('#logout').on('click',function(){
-			LS.portfolio_full_name = '';
-			LS.portfolio_username = '';
-			LS.portfolio_password = '';
-
-			newUser();
-		});
-
-		$('#new-portfolio-form').on('submit', function(){
-			$.getJSON('./ajax/addPortfolio.php',{
-				name: $(this).find('input:first').val(),
-				username: LS.portfolio_username
-			}, function(reply){
-				if(reply.status){
-					$('#new-portfolio').modal('hide');
-					currentPortfolio = portfolios.length;
-					startSession();
-				}
-			});
-
-			return false;
-		});
-
-		$('#deposit-withdraw-form').on('submit', function(){
-			var ammount = parseFloat($(this).find('input:first').val(),10) *
-				($(this).find('.btn.active>input').attr('id') == 'deposit' ? 1 : -1);
-
-			$.getJSON('./ajax/modifyCash.php',{portfolio_id: portfolios[currentPortfolio].PORTFOLIO_ID, ammount: ammount},function(reply){
-				if(reply.status){
-					$('#deposit-withdraw').modal('hide');
-					portfolios[currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[currentPortfolio].CASH_ACCOUNT,10) + ammount;
-					renderPortfolio(currentPortfolio);
-				}else{
-					//while debugging
-					alert(reply.message);
-				}
-			});
-
-			return false;
-		});
-
-		$('#add-transaction-form').on('submit',function(){
-
-
-			return false;
-		});
 	},
 
-	renderPortfolio = function(ind){
-		var template = _.template($('#template-portfolio').html()),
-		list = [];
-
-		for(var i=0; i<portfolios.length; i++){
-			list.push(portfolios[i].NAME);
-		}
-
-		$('#content').html(template({
-			name: portfolios[ind].NAME,
-			portfolios: list,
-			balance: portfolios[ind].CASH_ACCOUNT
-		}));
-
-		$('#portfolio-list').on('click','.portfolio-item',function(){
-			if(!$(this).hasClass('active')){
-				var list = $('#portfolio-list').find('.portfolio-item');
-				currentPortfolio = list.index($(this));
-				list.removeClass('active');
-				list.eq(currentPortfolio).addClass('active');
-
-				renderPortfolio(currentPortfolio);
+	login = function(data){
+		$.getJSON('./ajax/login.php', data, function(reply){
+			if(reply){
+				LS.portfolio_full_name = reply.FULL_NAME;
+				LS.portfolio_username = data.username;
+				LS.portfolio_password = data.password;
+				startSession();
+			}else{
+				addAlert('Login Failed');
+				logout();
 			}
 		});
 	},
 
-	stockDetails = function(symbol){
-		$.getJSON('./ajax/quotehist.php',{symbol: symbol}, function(data){
-			$('#stock-chart').highcharts('StockChart',{
-				title: {
-					text: symbol + ' Stock History'
-				},
-				series: [{
-					name: symbol,
-					data: data
-				}]
-			});
-		});
+	logout = function(){
+		LS.portfolio_full_name = '';
+		LS.portfolio_username = '';
+		LS.portfolio_password = '';
+
+		newUser();
 	},
 
 	addAlert = function(text){
@@ -209,6 +238,7 @@ window.portfolio = (function(){
 	};
 
 	return {
-		init: init
+		init: init,
+		stockDetails: stockDetails
 	};
 })();
