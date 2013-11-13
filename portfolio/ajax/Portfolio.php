@@ -111,7 +111,7 @@ class Portfolio
 		return $list;
 	}
 
-	public static function addTransaction($portfolio_id, $shareChange, $symbol, $buyOrSell)
+	public static function addTransaction($portfolio_id, $shares, $type, $symbol,$cost, $total)
 	{
 		self::initializeConnection();
 		$totalPrice = 0;
@@ -125,46 +125,34 @@ class Portfolio
 			oci_bind_by_name($statement, ":username", $symbol);
 			oci_execute($statement);
 			//$status = oci_fetch_assoc($statement);
-			if ($buyOrSell == 1){
-				//This is for buying stock
+			if ($type == 1){
+				//This is for buying stock--add to stock holdings and subtract from the cash account
 				$innerLoop = oci_parse(self::$dbConn,
-					"UPDATE portfolio_stock_holdings
-					SET shares=shares + :spareChange
+					"INSERT into portfolio_stock_holdings (symbol,shares)values (:symbol,:shares) 
+					on duplicate key UPDATE SET shares=shares + :shares
 					WHERE portfolio_id=:portfolio");
 				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
+				oci_bind_by_name($innerLoop,":symbol", $symbol);
+				oci_bind_by_name($innerLoop,":shares",$shares);
 				oci_execute($innerLoop);
 
-				$shareAmount = oci_parse(self::$dbConn,
-					"SELECT price
-					FROM portfolio_stock_holdings
-					WHERE symbol=:symbol");
-				oci_bind_by_name($shareAmount, ":symbol", $symbol);
-				oci_execute($shareAmount);
-
-				$shareAmount = $shareAmount * $statement;
-				$shareAmount = -1 * abs($shareAmount);
+				$shareAmount = -1 * abs($total);
 
 				modifyCash($portfolio_id,$shareAmount);
 
 			}
-			elseif ($buyOrSell == -1) {
+			elseif ($type == 0) {
+				//This is for selling stock--subtract the number of shares you sold from stock holdings and add total to the cash account 
 				$innerLoop = oci_parse(self::$dbConn,
-					"UPDATE portfolio_stock_holdings
-					SET shares=shares - :spareChange
+					"INSER into portfolio_stock_holdings (symbol,shares) values (:symbol,:shares)
+					on duplicate key UPDATE portfolio_stock_holdings SET shares=shares - :shares
 					WHERE portfolio_id=:portfolio");
 				oci_bind_by_name($innerLoop, ":portfolio", $portfolio_id);
+				oci_bind_by_name($innerLoop,":symbol",$symbol);
+				oci_bind_by_name($innerLoop,"shares",$shares);
 				oci_execute($innerLoop);
 
-				$shareAmount = oci_parse(self::$dbConn,
-					"SELECT price
-					FROM portfolio_stock_holdings
-					WHERE symbol=:symbol");
-				oci_bind_by_name($shareAmount, ":symbol", $symbol);
-				oci_execute($shareAmount);
-
-				$shareAmount = $shareAmount * $statement;
-
-				modifyCash($portfolio_id,$shareAmount);
+				modifyCash($portfolio_id,$total);
 			}
 		} catch (Exception $e) {
 			echo "Error: " . $e['message'];
