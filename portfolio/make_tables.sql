@@ -58,6 +58,7 @@ BEGIN
 END;
 /
 
+--procedure to insert or update, from http://stackoverflow.com/questions/237327/oracle-how-to-upsert-update-or-insert-into-a-table
 CREATE OR REPLACE PROCEDURE stock_transaction(p NUMBER, sym VARCHAR, s NUMBER)
 AS
 BEGIN

@@ -117,9 +117,6 @@ class Portfolio
 		try {
 			if ($type == "buy")
 			{
-				// "INSERT INTO portfolio_stock_holdings (portfolio,symbol,shares)
-				// 	VALUES (:portfolio, :symbol, :shares_count)
-				// 	ON DUPLICATE KEY UPDATE shares=shares + :shares_count"
 				$statement = oci_parse(self::$dbConn,
 					"call stock_transaction(:portfolio, :symbol, :shares_count)");
 				oci_bind_by_name($statement, ":portfolio", $portfolio);
@@ -132,14 +129,40 @@ class Portfolio
 			else
 			{
 				$statement = oci_parse(self::$dbConn,
-					"UPDATE portfolio_stock_holdings SET shares=shares - :shares
+					"SELECT shares
+					FROM portfolio_stock_holdings
 					WHERE portfolio=:portfolio AND symbol=:symbol");
 				oci_bind_by_name($statement, ":portfolio", $portfolio);
 				oci_bind_by_name($statement,":symbol",$symbol);
-				oci_bind_by_name($statement,"shares",$shares);
-				oci_execute($statement, OCI_NO_AUTO_COMMIT);
+				oci_execute($statement);
+				$row = oci_fetch_assoc($statement);
 
-				$status = self::modifyCash($portfolio,floatval($total));
+				#sell some shares, keep row
+				if($row AND floatval($row['SHARES']) > $shares){
+					$statement = oci_parse(self::$dbConn,
+						"UPDATE portfolio_stock_holdings SET shares=shares - :shares
+						WHERE portfolio=:portfolio AND symbol=:symbol");
+					oci_bind_by_name($statement, ":portfolio", $portfolio);
+					oci_bind_by_name($statement,":symbol",$symbol);
+					oci_bind_by_name($statement,"shares",$shares);
+					oci_execute($statement, OCI_NO_AUTO_COMMIT);
+
+					$status = self::modifyCash($portfolio,floatval($total));
+
+				#sell all shares, delete row
+				}else if ($row AND floatval($row['SHARES']) == $shares){
+					$statement = oci_parse(self::$dbConn,
+						"DELETE FROM portfolio_stock_holdings
+						WHERE portfolio=:portfolio AND symbol=:symbol");
+					oci_bind_by_name($statement, ":portfolio", $portfolio);
+					oci_bind_by_name($statement,":symbol",$symbol);
+					oci_execute($statement, OCI_NO_AUTO_COMMIT);
+
+					$status = self::modifyCash($portfolio,floatval($total));
+				}else{
+					$status = array("status"=>0,"message"=>"You don't have that many shares to sell!");
+				}
+
 			}
 		} catch (Exception $e) {
 			echo "Error: " . $e['message'];
@@ -174,59 +197,6 @@ class Portfolio
 
 		return $status;
 	}
-
-	// public static function addStockHoldings ($)
-	// {
-	// 	self::initializeConnection();
-	// 	try {
-	// 		$statement = oci_parse(self::$dbConn,
-	// 				"INSERT INTO portfolio_stock_holdings (id,portfolio,price,shares,symbol)
-	// 				VALUES (:id,:portfolio,:price,:shares,:symbol)");
-	// 		oci_bind_by_name($statement, ":id", $id);
-	// 		oci_bind_by_name($statement, ":portfolio", $portfolio);
-	// 		oci_bind_by_name($statement,":price",$price);
-	// 		oci_bind_by_name($statement,":shares",$shares);
-	// 		oci_bind_by_name($statement,":symbol",$symbol);
-	// 		$r = oci_execute($statement);
-
-	// 		if($r){
-	// 				$status = array("status"=>1);
-	// 		}else{
-	// 				$err = oci_error($statement);
-	// 				$status = array("status"=>0,"message"=>$err['message']);
-	// 		}
-	// 	} catch (Exception $e) {
-	// 			echo "Error: " . $e['message'];
-	// 			die();
-	// 	}
-
-	// 	return $status;
-	// }
-
-	// public static function removeStockHoldings ($id)
-	// {
-	// 	self::initializeConnection();
-	// 	try{
-	// 		$statement = oci_parse(self::$dbConn,
-	// 			"DELETE
-	// 			FROM portfolio_stock_holdings
-	// 			WHERE id=:id");
-	// 		oci_bind_by_name($statement,":id",$id);
-	// 		$r = oci_execute($statement);
-
-	// 		if($r){
-	// 			$status = array("status"=>1);
-	// 		}else{
-	// 			$err = oci_error($statement);
-	// 			$status = array("status"=>0,"message"=>$err['message']);
-	// 		}
-	// 	} catch (Exception $e) {
-	// 			echo "Error: " . $e['message'];
-	// 			die();
-	// 	}
-
-	// 	return $status;
-	// }
 
 	public static function getStockHoldings ($portfolio)
 	{
@@ -345,7 +315,7 @@ class Portfolio
 
 	public static function quoteHistory ($symbol)
 	{
-		$command = "~pdinda/339-f13/HANDOUT/portfolio/quotehist.pl --open --high --low --close ".$symbol;
+		$command = "~pdinda/339-f13/HANDOUT/portfolio/quotehist.pl --from=\"01/01/2006\" --open --high --low --close ".$symbol;
 
 		$res = array();
 		exec($command,$res);
@@ -357,6 +327,48 @@ class Portfolio
 
 			$res[$i] = array(floatval($tmp[0])*1000,floatval($tmp[2]),floatval($tmp[3]),floatval($tmp[4]),floatval($tmp[5]));
 		}
+
+		self::initializeConnection();
+		$historic = array();
+		try {
+			$statement = oci_parse(self::$dbConn,
+				"SELECT *
+				FROM cs339.StocksDaily
+				WHERE symbol=:symbol
+				ORDER BY timestamp");
+			oci_bind_by_name($statement, ":symbol", $symbol);
+			oci_execute($statement);
+
+			while($row = oci_fetch_assoc($statement)){
+				$historic[] = array(floatval($row['TIMESTAMP'])*1000,floatval($row['OPEN']),floatval($row['HIGH']),floatval($row['LOW']),floatval($row['CLOSE']),floatval($row['VOLUME']));
+			}
+		} catch (Exception $e) {
+			echo "Error: " . $e['message'];
+			die();
+		}
+
+		return array_merge($historic,$res);
+	}
+
+	public static function getCovariance ($symbols)
+	{
+		DatabaseOCI::setEnv();
+
+		$today = date('m/d/y',mktime(0,0,0,date("m"),date("d"),date("Y")-13));
+		$last_year = date('m/d/y',mktime(0,0,0,date("m"),date("d"),date("Y")-14));
+		$command = "~pdinda/339-f13/HANDOUT/portfolio/get_covar.pl --from=\"$last_year\" --to=\"$today\" --simple ".implode(" ",$symbols);
+		echo $command."<br/>";
+		$res = array();
+		exec($command,$res);
+
+		// $count = count($res);
+
+		// for($i=0; $i<$count; $i++){
+		// 	$tmp = explode("\t",$res[$i]);
+
+		// 	$res[$i] = array(floatval($tmp[0])*1000,floatval($tmp[2]),floatval($tmp[3]),floatval($tmp[4]),floatval($tmp[5]));
+		// }
+		var_dump($res);
 
 		return $res;
 	}

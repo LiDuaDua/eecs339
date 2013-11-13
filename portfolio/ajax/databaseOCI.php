@@ -9,9 +9,7 @@ class DatabaseOCI
     static function getInstance ()
     {
         PutEnv("ORACLE_SID=CS339");
-
         PutEnv("ORACLE_HOME=/raid/oracle11g/app/oracle/product/11.2.0.1.0/db_1");
-
         PutEnv("ORACLE_BASE=/raid/oracle11g/app/oracle/product/11.2.0.1.0");
 
         if (!self::$_instance) {
@@ -33,5 +31,13 @@ class DatabaseOCI
         }
 
         return self::$_instance;
+    }
+
+    static function setEnv ()
+    {
+        PutEnv("PORTF_DBMS=oracle");
+        PutEnv("PORTF_DB=cs339");
+        PutEnv("PORTF_DBUSER=".$GLOBALS['USERNAME']);
+        PutEnv("PORTF_DBPASS=".$GLOBALS['PASSWORD']);
     }
 }

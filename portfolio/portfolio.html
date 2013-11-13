@@ -190,7 +190,7 @@
 					<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
 					<h4 class="modal-title">Stock Info</h4>
 				</div>
-				<div class="modal-body" id="stock-chart" style="height: 500px; min-width: 500px;"></div>
+				<div class="modal-body" id="stock-chart" style="height: 500px;"></div>
 			</div>
 		</div>
 	</div>
@@ -244,12 +244,20 @@
 					<li class="portfolio-item<%= (name === item_name ? ' active' : '') %>"><a href="#"><%= item_name %></a></li>
 				<% }); %>
 				</ul>
-				<a href="#" data-target="#new-portfolio" data-toggle="modal">Add Portfolio</a>
-				<h4>Current Balance:</h4>
-				<div class="alert alert-success" style="margin-bottom:0;"><h2 id="cash_account" style="margin:0;text-align:center">$<%= balance %></h2></div>
-				<a href="#" data-target="#deposit-withdraw" data-toggle="modal">Deposit/Withdraw</a>
+				<a href="#" class="btn btn-link" data-target="#new-portfolio" data-toggle="modal">Add Portfolio</a>
 			</div>
 			<div class="col-md-10">
+				<div class="row">
+					<div class="col-sm-3">
+						<p class="lead">Current Balance: $<span id="cash_account"><%= balance %></span></p>
+						<p><a href="#" data-target="#deposit-withdraw" data-toggle="modal">Deposit/Withdraw</a></p>
+					</div>
+					<div class="col-sm-3">
+						<% var pmv = 0; %>
+						<% _.each(stocks, function(stock){ pmv += parseInt(stock.SHARES,10)*parseFloat(stock.CLOSE,10); }); %>
+						<p class="lead">Present Market Value: $<%= pmv.toFixed(2) %></p>
+					</div>
+				</div>
 				<table class="table table-striped">
 					<thead>
 						<tr>
@@ -261,18 +269,18 @@
 							<th>Close</th>
 							<th>Volume</th>
 						</tr>
-						<% _.each(stocks, function(stock){ %>
-							<tr>
-								<td><a href="#" onclick="portfolio.stockDetails('<%= stock.SYMBOL %>');"><%= stock.SYMBOL %></a></td>
-								<td><%= stock.SHARES %></td>
-								<td><%= stock.OPEN %></td>
-								<td><%= stock.HIGH %></td>
-								<td><%= stock.LOW %></td>
-								<td><%= stock.CLOSE %></td>
-								<td><%= stock.VOLUME %></td>
-							</tr>
-						<% }); %>
 					</thead>
+					<% _.each(stocks, function(stock){ %>
+						<tr>
+							<td><a href="#" onclick="portfolio.stockDetails('<%= stock.SYMBOL %>');"><%= stock.SYMBOL %></a></td>
+							<td><%= stock.SHARES %></td>
+							<td><%= stock.OPEN %></td>
+							<td><%= stock.HIGH %></td>
+							<td><%= stock.LOW %></td>
+							<td><%= stock.CLOSE %></td>
+							<td><%= stock.VOLUME %></td>
+						</tr>
+					<% }); %>
 				</table>
 				<a href="#" data-target="#add-transaction" data-toggle="modal">Add Transaction</a>
 			</div>

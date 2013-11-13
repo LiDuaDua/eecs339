@@ -4,10 +4,14 @@ window.portfolio = (function(){
 	'use strict';
 
 	//state variables
-	var portfolios, currentPortfolio = 0, symbols = [],
+	var portfolios, symbols = [],
 	LS = localStorage,
 
 	init = function(){
+		if(!LS.currentPortfolio){
+			LS.currentPortfolio = 0;
+		}
+
 		if(LS.portfolio_full_name && LS.portfolio_username && LS.portfolio_password){
 			login({
 				full_name: LS.portfolio_full_name,
@@ -58,7 +62,7 @@ window.portfolio = (function(){
 
 					$.getJSON('./ajax/addPortfolio.php',{name: 'Default', username: LS.portfolio_username}, function(reply){
 						if(reply.status){
-							currentPortfolio = 0;
+							LS.currentPortfolio = 0;
 							startSession();
 						}else{
 							addAlert(reply.message);
@@ -80,7 +84,7 @@ window.portfolio = (function(){
 		$.getJSON('./ajax/getUserPortfolios.php',{username: LS.portfolio_username},function(reply){
 			if(reply.length > 0){
 				portfolios = reply;
-				renderPortfolio(currentPortfolio);
+				renderPortfolio(LS.currentPortfolio);
 			}
 		});
 
@@ -95,7 +99,7 @@ window.portfolio = (function(){
 			}, function(reply){
 				$('#new-portfolio').modal('hide');
 				if(reply.status){
-					currentPortfolio = portfolios.length;
+					LS.currentPortfolio = portfolios.length;
 					startSession();
 				}else{
 					addAlert(reply.message);
@@ -106,17 +110,16 @@ window.portfolio = (function(){
 		});
 
 		$('#deposit-withdraw-form').on('submit', function(){
+			$('#deposit-withdraw').find('.alert-info').fadeOut();
 			var ammount = parseFloat($(this).find('input:first').val(),10) *
 				($(this).find('.btn.active>input').attr('id') == 'deposit' ? 1 : -1);
 
-			$.getJSON('./ajax/modifyCash.php',{portfolio_id: portfolios[currentPortfolio].ID, ammount: ammount},function(reply){
+			$.getJSON('./ajax/modifyCash.php',{portfolio_id: portfolios[LS.currentPortfolio].ID, ammount: ammount},function(reply){
 				if(reply.status){
 					$('#deposit-withdraw').modal('hide');
-					$('#deposit-withdraw').find('.alert-info').hide();
-					portfolios[currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[currentPortfolio].CASH_ACCOUNT,10) + ammount;
-					$('#cash-account').text('$'+portfolios[currentPortfolio].CASH_ACCOUNT);
+					modifyCash(ammount);
 				}else{
-					$('#deposit-withdraw').find('.alert-info').text(reply.message).show();
+					$('#deposit-withdraw').find('.alert-info').text(reply.message).fadeIn();
 				}
 			});
 
@@ -124,14 +127,21 @@ window.portfolio = (function(){
 		});
 
 		$('#add-transaction-form').on('submit',function(){
+			$('#add-transaction').find('.alert-info').fadeOut();
 			var data = {};
 			$(this).find('.form-control').each(function(i, el){
 				data[el.name] = el.value;
 			});
-			data.portfolio_id = portfolios[currentPortfolio].ID;
+			data.portfolio_id = portfolios[LS.currentPortfolio].ID;
 
 			$.getJSON('./ajax/addTransaction.php',data,function(reply){
-				console.log(reply);
+				if(reply.status){
+					$('#add-transaction').modal('hide');
+					modifyCash(data.type == 'buy' ? -1*data.total : data.total);
+					renderPortfolio(LS.currentPortfolio);
+				}else{
+					$('#add-transaction').find('.alert-info').text(reply.message).fadeIn();
+				}
 			});
 
 			return false;
@@ -139,7 +149,7 @@ window.portfolio = (function(){
 	},
 
 	renderPortfolio = function(ind){
-		$.getJSON('./ajax/getStockHoldings.php',{portfolio: portfolios[currentPortfolio].ID},function(reply){
+		$.getJSON('./ajax/getStockHoldings.php',{portfolio: portfolios[LS.currentPortfolio].ID},function(reply){
 			var template = _.template($('#template-portfolio').html()),
 			list = [];
 
@@ -150,18 +160,18 @@ window.portfolio = (function(){
 			$('#content').html(template({
 				name: portfolios[ind].NAME,
 				portfolios: list,
-				balance: portfolios[ind].CASH_ACCOUNT,
+				balance: parseFloat(portfolios[ind].CASH_ACCOUNT,10).toFixed(2),
 				stocks: reply
 			}));
 
 			$('#portfolio-list').on('click','.portfolio-item',function(){
 				if(!$(this).hasClass('active')){
 					var list = $('#portfolio-list').find('.portfolio-item');
-					currentPortfolio = list.index($(this));
+					LS.currentPortfolio = list.index($(this));
 					list.removeClass('active');
-					list.eq(currentPortfolio).addClass('active');
+					list.eq(LS.currentPortfolio).addClass('active');
 
-					renderPortfolio(currentPortfolio);
+					renderPortfolio(LS.currentPortfolio);
 				}
 			});
 		});
@@ -171,10 +181,17 @@ window.portfolio = (function(){
 		$.getJSON('./ajax/quotehist.php',{symbol: symbol}, function(data){
 			$('#stock-info').modal('show');
 			$('#stock-chart').highcharts('StockChart',{
+				chart: {
+					width: 538
+				},
+				credits: {
+					enabled: false
+				},
 				title: {
 					text: symbol + ' Stock History'
 				},
 				series: [{
+					type: 'candlestick',
 					name: symbol,
 					data: data
 				}]
@@ -229,6 +246,11 @@ window.portfolio = (function(){
 		LS.portfolio_password = '';
 
 		newUser();
+	},
+
+	modifyCash = function(ammount){
+		portfolios[LS.currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[LS.currentPortfolio].CASH_ACCOUNT,10) + parseFloat(ammount,10);
+		$('#cash-account').text('$'+portfolios[LS.currentPortfolio].CASH_ACCOUNT.toFixed(2));
 	},
 
 	addAlert = function(text){
