@@ -144,11 +144,11 @@ class Portfolio
 				$shareAmount = $shareAmount * $statement;
 				$shareAmount = -1 * abs($shareAmount);
 
-				modifyCash($portfolio_id,$shareAmount)
+				modifyCash($portfolio_id,$shareAmount);
 
 			}
 			elseif ($buyOrSell == -1) {
-				$innerLoop = oci_parse(self::$dbConn, 
+				$innerLoop = oci_parse(self::$dbConn,
 					"UPDATE portfolio_stock_holdings
 					SET shares=shares - :spareChange
 					WHERE portfolio_id=:portfolio");
@@ -164,8 +164,11 @@ class Portfolio
 
 				$shareAmount = $shareAmount * $statement;
 
-				modifyCash($portfolio_id,$shareAmount)
+				modifyCash($portfolio_id,$shareAmount);
 			}
+		} catch (Exception $e) {
+			echo "Error: " . $e['message'];
+			die();
 		}
 
 	}
