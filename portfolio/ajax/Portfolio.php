@@ -201,7 +201,7 @@ class Portfolio
 	// 	return $status;
 	// }
 
-	public static function removeStockHoldings ()
+	public static function removeStockHoldings ($id)
 	{
 		self::initializeConnection();
 		try{
@@ -213,10 +213,10 @@ class Portfolio
 			$r = oci_execute($statement);
 
 			if($r){
-					$status = array("status"=>1);
+				$status = array("status"=>1);
 			}else{
-					$err = oci_error($statement);
-					$status = array("status"=>0,"message"=>$err['message']);
+				$err = oci_error($statement);
+				$status = array("status"=>0,"message"=>$err['message']);
 			}
 		} catch (Exception $e) {
 				echo "Error: " . $e['message'];
@@ -256,7 +256,7 @@ class Portfolio
 				"SELECT *
 				FROM portfolio_stocks_daily
 				WHERE symbol=:symbol
-				ORDER BY date DESC");
+				ORDER BY stock_date DESC");
 			oci_bind_by_name($statement, ":symbol", $symbol);
 			oci_execute($statement);
 			$row = oci_fetch_assoc($statement);
@@ -270,21 +270,19 @@ class Portfolio
 		} else {
 			$quote = self::quote($symbol);
 
-			var_dump($quote);
-
 			oci_close(self::$dbConn);
 			self::initializeConnection();
 			try {
 				$statement = oci_parse(self::$dbConn,
-					"INSERT INTO portfolio_stocks_daily (date,symbol,open,high,low,close,volume)
-					VALUES (:date,:symbol,:open,:high,:low,:close,:volume)");
-				oci_bind_by_name($statement, ":date", $quote[$symbol]['date']);
+					"INSERT INTO portfolio_stocks_daily (stock_date,symbol,open,high,low,close,volume)
+					VALUES (TO_DATE(:stock_date,'MM/DD/YYYY'),:symbol,:open,:high,:low,:close,:volume)");
+				oci_bind_by_name($statement, ":stock_date", $quote['DATE']);
 				oci_bind_by_name($statement, ":symbol", $symbol);
-				oci_bind_by_name($statement, ":open", $quote[$symbol]['open']);
-				oci_bind_by_name($statement, ":high", $quote[$symbol]['high']);
-				oci_bind_by_name($statement, ":low", $quote[$symbol]['low']);
-				oci_bind_by_name($statement, ":close", $quote[$symbol]['close']);
-				oci_bind_by_name($statement, ":volume", $quote[$symbol]['volume']);
+				oci_bind_by_name($statement, ":open", floatval($quote['OPEN']));
+				oci_bind_by_name($statement, ":high", floatval($quote['HIGH']));
+				oci_bind_by_name($statement, ":low", floatval($quote['LOW']));
+				oci_bind_by_name($statement, ":close", floatval($quote['CLOSE']));
+				oci_bind_by_name($statement, ":volume", $quote['VOLUME']);
 				$r = oci_execute($statement);
 
 				if($r){
@@ -354,19 +352,9 @@ class Portfolio
 		$out = array();
 		exec($command,$res);
 
-		$count = count($res);
-		for($i=0; $i<$count; $i+=10){
-			$name = $res[$i];
-
-			$tmp = array();
-
-			for($j=2; $j<9; $j++){
-				$tmp2 = explode("\t",$res[$i+$j]);
-
-				$tmp[$tmp2[0]] = $tmp2[1];
-			}
-
-			$out[$name] = $tmp;
+		for($i=2; $i<9; $i++){
+			$tmp = explode("\t",$res[$i]);
+			$out[strtoupper($tmp[0])] = $tmp[1];
 		}
 
 		return $out;
