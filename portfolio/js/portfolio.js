@@ -54,6 +54,15 @@ window.portfolio = (function(){
 					LS.portfolio_full_name = data.full_name;
 					LS.portfolio_username = data.username;
 					LS.portfolio_password = data.password;
+
+					$.getJSON('./ajax/addPortfolio.php',{name: 'Default', username: LS.portfolio_username}, function(reply){
+						if(reply.status){
+							currentPortfolio = 0;
+							startSession();
+						}else{
+							alert(reply.message);
+						}
+					});
 				}else{
 					//while debugging
 					alert(reply.message);
