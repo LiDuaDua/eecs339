@@ -56,7 +56,7 @@ CREATE TABLE portfolio_stocks_historical(
 );
 
 CREATE TABLE portfolio_stocks_daily(
-	timestamp TIMESTAMP,
+	stock_date DATE,
 	symbol REFERENCES cs339.StocksSymbols(symbol),
 	open DECIMAL(19, 4),
 	high DECIMAL(19, 4),
