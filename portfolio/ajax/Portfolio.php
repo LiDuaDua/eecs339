@@ -8,6 +8,7 @@ class Portfolio
 	public function __construct ()
 	{
 		self::initializeConnection();
+		date_default_timezone_set('America/Chicago');
 	}
 
 	private static function initializeConnection ()
@@ -235,7 +236,7 @@ class Portfolio
 				"SELECT *
 				FROM portfolio_stocks_daily
 				WHERE symbol=:symbol
-				ORDER BY stock_date DESC");
+				ORDER BY timestamp DESC");
 			oci_bind_by_name($statement, ":symbol", $symbol);
 			oci_execute($statement);
 			$row = oci_fetch_assoc($statement);
@@ -249,18 +250,18 @@ class Portfolio
 		} else {
 			$quote = self::quote($symbol);
 
-			oci_close(self::$dbConn);
+			// oci_close(self::$dbConn);
 			self::initializeConnection();
 			try {
 				$statement = oci_parse(self::$dbConn,
-					"INSERT INTO portfolio_stocks_daily (stock_date,symbol,open,high,low,close,volume)
-					VALUES (TO_DATE(:stock_date,'MM/DD/YYYY'),:symbol,:open,:high,:low,:close,:volume)");
-				oci_bind_by_name($statement, ":stock_date", $quote['DATE']);
+					"INSERT INTO portfolio_stocks_daily (timestamp,symbol,open,high,low,close,volume)
+					VALUES (:timestamp,:symbol,:open,:high,:low,:close,:volume)");
+				oci_bind_by_name($statement, ":timestamp", $quote['DATE']);
 				oci_bind_by_name($statement, ":symbol", $symbol);
-				oci_bind_by_name($statement, ":open", floatval($quote['OPEN']));
-				oci_bind_by_name($statement, ":high", floatval($quote['HIGH']));
-				oci_bind_by_name($statement, ":low", floatval($quote['LOW']));
-				oci_bind_by_name($statement, ":close", floatval($quote['CLOSE']));
+				oci_bind_by_name($statement, ":open", $quote['OPEN']);
+				oci_bind_by_name($statement, ":high", $quote['HIGH']);
+				oci_bind_by_name($statement, ":low", $quote['LOW']);
+				oci_bind_by_name($statement, ":close", $quote['CLOSE']);
 				oci_bind_by_name($statement, ":volume", $quote['VOLUME']);
 				$r = oci_execute($statement);
 
@@ -307,6 +308,10 @@ class Portfolio
 
 		for($i=2; $i<9; $i++){
 			$tmp = explode("\t",$res[$i]);
+			if($tmp[0] == "date"){
+				$date = date_parse($tmp[1]);
+				$tmp[1] = mktime(0,0,0,$date['month'],$date['day'],$date['year']);
+			}
 			$out[strtoupper($tmp[0])] = $tmp[1];
 		}
 
@@ -315,6 +320,7 @@ class Portfolio
 
 	public static function quoteHistory ($symbol)
 	{
+		self::initializeConnection();
 		$command = "~pdinda/339-f13/HANDOUT/portfolio/quotehist.pl --from=\"01/01/2006\" --open --high --low --close ".$symbol;
 
 		$res = array();
@@ -326,9 +332,25 @@ class Portfolio
 			$tmp = explode("\t",$res[$i]);
 
 			$res[$i] = array(floatval($tmp[0])*1000,floatval($tmp[2]),floatval($tmp[3]),floatval($tmp[4]),floatval($tmp[5]));
+			try {
+				$statement = oci_parse(self::$dbConn,
+					"INSERT INTO portfolio_stocks_daily
+					(timestamp,symbol,open,high,low,close,volume)
+					VALUES (:timestamp, :symbol, :open, :high, :low, :close, :volume)");
+				oci_bind_by_name($statement, ":timestamp", $tmp[0]);
+				oci_bind_by_name($statement, ":symbol", $symbol);
+				oci_bind_by_name($statement, ":open", $tmp[2]);
+				oci_bind_by_name($statement, ":high", $tmp[3]);
+				oci_bind_by_name($statement, ":low", $tmp[4]);
+				oci_bind_by_name($statement, ":close", $tmp[5]);
+				oci_bind_by_name($statement, ":volume", $symbol);
+				oci_execute($statement, OCI_NO_AUTO_COMMIT);
+			} catch (Exception $e) {
+				echo "Error: " . $e['message'];
+				die();
+			}
 		}
 
-		self::initializeConnection();
 		$historic = array();
 		try {
 			$statement = oci_parse(self::$dbConn,

@@ -250,7 +250,7 @@ window.portfolio = (function(){
 
 	modifyCash = function(ammount){
 		portfolios[LS.currentPortfolio].CASH_ACCOUNT = parseFloat(portfolios[LS.currentPortfolio].CASH_ACCOUNT,10) + parseFloat(ammount,10);
-		$('#cash-account').text('$'+portfolios[LS.currentPortfolio].CASH_ACCOUNT.toFixed(2));
+		$('#cash-account').text(portfolios[LS.currentPortfolio].CASH_ACCOUNT.toFixed(2));
 	},
 
 	addAlert = function(text){

@@ -41,7 +41,13 @@
 			</div>
 		</div>
 		<div class="row">
-			<div class="col-lg-12" id="content"></div>
+			<div class="col-lg-12" id="content">
+				<div class="jumbotron">
+					<h1>Welcome to Portfolio!</h1>
+					<p>The premier way of managing your investments</p>
+					<p><a href="#" class="btn btn-primary btn-lg" data-target="#signup" data-toggle="modal">Sign Up!</a></p>
+				</div>
+			</div>
 		</div>
 	</div>
 	<div id="signup" class="modal fade in">
@@ -249,7 +255,7 @@
 			<div class="col-md-10">
 				<div class="row">
 					<div class="col-sm-3">
-						<p class="lead">Current Balance: $<span id="cash_account"><%= balance %></span></p>
+						<p class="lead">Current Balance: $<span id="cash-account"><%= balance %></span></p>
 						<p><a href="#" data-target="#deposit-withdraw" data-toggle="modal">Deposit/Withdraw</a></p>
 					</div>
 					<div class="col-sm-3">

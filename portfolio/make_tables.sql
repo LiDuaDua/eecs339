@@ -1,7 +1,6 @@
 DROP TABLE portfolio_stock_holdings;
 DROP TABLE portfolio_portfolios;
 DROP TABLE portfolio_users;
-DROP TABLE portfolio_stocks_historical;
 DROP TABLE portfolio_stocks_daily;
 DROP SEQUENCE portfolio_id_seq;
 DROP SEQUENCE stock_holdings_id_seq;
@@ -38,7 +37,7 @@ END;
 CREATE TABLE portfolio_stock_holdings(
 	id INT NOT NULL PRIMARY KEY,
 	portfolio REFERENCES portfolio_portfolios(id) NOT NULL,
-	symbol REFERENCES cs339.StocksSymbols(symbol) NOT NULL,
+	symbol VARCHAR2(16) NOT NULL,
 	shares INT NOT NULL,
 		CONSTRAINT positive_shares CHECK (shares>=0)
 );
@@ -59,7 +58,7 @@ END;
 /
 
 --procedure to insert or update, from http://stackoverflow.com/questions/237327/oracle-how-to-upsert-update-or-insert-into-a-table
-CREATE OR REPLACE PROCEDURE stock_transaction(p NUMBER, sym VARCHAR, s NUMBER)
+CREATE OR REPLACE PROCEDURE stock_transaction(p NUMBER, sym VARCHAR2, s NUMBER)
 AS
 BEGIN
 	MERGE INTO portfolio_stock_holdings sh USING DUAL ON (portfolio=p AND symbol=sym)
@@ -68,22 +67,18 @@ BEGIN
 END stock_transaction;
 /
 
-CREATE TABLE portfolio_stocks_historical(
-	symbol REFERENCES cs339.StocksSymbols(symbol)
-);
-
 CREATE TABLE portfolio_stocks_daily(
-	stock_date DATE NOT NULL,
-	symbol REFERENCES cs339.StocksSymbols(symbol) NOT NULL,
-	open DECIMAL(19, 4) NOT NULL,
-	high DECIMAL(19, 4) NOT NULL,
-	low DECIMAL(19, 4) NOT NULL,
-	close DECIMAL(19, 4) NOT NULL,
-	volume INT NOT NULL
+	timestamp NUMBER NOT NULL,
+	symbol VARCHAR2(16) NOT NULL,
+	open NUMBER NOT NULL,
+	high NUMBER NOT NULL,
+	low NUMBER NOT NULL,
+	close NUMBER NOT NULL,
+	volume NUMBER NOT NULL
 );
 
 ALTER TABLE portfolio_stocks_daily
-	ADD CONSTRAINT unique_symbol_per_day UNIQUE (stock_date, symbol);
+	ADD CONSTRAINT unique_symbol_per_day UNIQUE (timestamp, symbol);
 
 
 INSERT INTO portfolio_users (username,full_name,password) VALUES ('root','Root User','b4b8daf4b8ea9d39568719e1e320076f');
