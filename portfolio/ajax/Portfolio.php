@@ -231,13 +231,18 @@ class Portfolio
 	public static function selectOrFetchStock ($symbol)
 	{
 		self::initializeConnection();
+
+		$timestamp = date_parse(date('m/d/y'));
+		$timestamp = mktime(0,0,0,$date['month'],$date['day'],$date['year']);
+
 		try {
 			$statement = oci_parse(self::$dbConn,
 				"SELECT *
 				FROM portfolio_stocks_daily
 				WHERE symbol=:symbol
-				ORDER BY timestamp DESC");
+				AND timestamp=:timestamp");
 			oci_bind_by_name($statement, ":symbol", $symbol);
+			oci_bind_by_name($statement, ":timestamp", $timestamp);
 			oci_execute($statement);
 			$row = oci_fetch_assoc($statement);
 		} catch(Exception $e) {
@@ -256,7 +261,7 @@ class Portfolio
 				$statement = oci_parse(self::$dbConn,
 					"INSERT INTO portfolio_stocks_daily (timestamp,symbol,open,high,low,close,volume)
 					VALUES (:timestamp,:symbol,:open,:high,:low,:close,:volume)");
-				oci_bind_by_name($statement, ":timestamp", $quote['DATE']);
+				oci_bind_by_name($statement, ":timestamp", $timestamp);
 				oci_bind_by_name($statement, ":symbol", $symbol);
 				oci_bind_by_name($statement, ":open", $quote['OPEN']);
 				oci_bind_by_name($statement, ":high", $quote['HIGH']);
@@ -308,10 +313,6 @@ class Portfolio
 
 		for($i=2; $i<9; $i++){
 			$tmp = explode("\t",$res[$i]);
-			if($tmp[0] == "date"){
-				$date = date_parse($tmp[1]);
-				$tmp[1] = mktime(0,0,0,$date['month'],$date['day'],$date['year']);
-			}
 			$out[strtoupper($tmp[0])] = $tmp[1];
 		}
 
@@ -321,55 +322,114 @@ class Portfolio
 	public static function quoteHistory ($symbol)
 	{
 		self::initializeConnection();
-		$command = "~pdinda/339-f13/HANDOUT/portfolio/quotehist.pl --from=\"01/01/2006\" --open --high --low --close ".$symbol;
 
-		$res = array();
-		exec($command,$res);
-
-		$count = count($res);
-
-		for($i=0; $i<$count; $i++){
-			$tmp = explode("\t",$res[$i]);
-
-			$res[$i] = array(floatval($tmp[0])*1000,floatval($tmp[2]),floatval($tmp[3]),floatval($tmp[4]),floatval($tmp[5]));
-			try {
-				$statement = oci_parse(self::$dbConn,
-					"INSERT INTO portfolio_stocks_daily
-					(timestamp,symbol,open,high,low,close,volume)
-					VALUES (:timestamp, :symbol, :open, :high, :low, :close, :volume)");
-				oci_bind_by_name($statement, ":timestamp", $tmp[0]);
-				oci_bind_by_name($statement, ":symbol", $symbol);
-				oci_bind_by_name($statement, ":open", $tmp[2]);
-				oci_bind_by_name($statement, ":high", $tmp[3]);
-				oci_bind_by_name($statement, ":low", $tmp[4]);
-				oci_bind_by_name($statement, ":close", $tmp[5]);
-				oci_bind_by_name($statement, ":volume", $symbol);
-				oci_execute($statement, OCI_NO_AUTO_COMMIT);
-			} catch (Exception $e) {
-				echo "Error: " . $e['message'];
-				die();
-			}
-		}
-
-		$historic = array();
 		try {
 			$statement = oci_parse(self::$dbConn,
-				"SELECT *
-				FROM cs339.StocksDaily
-				WHERE symbol=:symbol
-				ORDER BY timestamp");
+				"SELECT symbol
+				FROM portfolio_stocks_fetched
+				WHERE symbol=:symbol");
 			oci_bind_by_name($statement, ":symbol", $symbol);
 			oci_execute($statement);
-
-			while($row = oci_fetch_assoc($statement)){
-				$historic[] = array(floatval($row['TIMESTAMP'])*1000,floatval($row['OPEN']),floatval($row['HIGH']),floatval($row['LOW']),floatval($row['CLOSE']),floatval($row['VOLUME']));
-			}
+			$hasFetched = oci_fetch_assoc($statement);
 		} catch (Exception $e) {
 			echo "Error: " . $e['message'];
 			die();
 		}
 
-		return array_merge($historic,$res);
+		// if($hasFetched){
+		// 	echo "fetched<br/>";
+		// }else{
+		// 	echo "didnt fetch<br/>";
+		// }
+
+		if($hasFetched){
+			$quotehist = array();
+			try {
+				$statement = oci_parse(self::$dbConn,
+					"SELECT *
+					FROM stocksdaily
+					WHERE symbol=:symbol
+					ORDER BY timestamp");
+				oci_bind_by_name($statement, ":symbol", $symbol);
+				oci_execute($statement);
+
+				while($row = oci_fetch_assoc($statement)){
+					$quotehist[] = array(floatval($row['TIMESTAMP'])*1000,floatval($row['OPEN']),floatval($row['HIGH']),floatval($row['LOW']),floatval($row['CLOSE']),floatval($row['VOLUME']));
+				}
+			} catch (Exception $e) {
+				echo "Error: " . $e['message'];
+				die();
+			}
+
+			return $quotehist;
+		}else{
+			$command = "~pdinda/339-f13/HANDOUT/portfolio/quotehist.pl --from=\"01/01/2006\" --open --high --low --close --vol ".$symbol;
+
+			$res = array();
+			exec($command,$res);
+
+			$count = count($res);
+
+			$statement = oci_parse(self::$dbConn,
+				"INSERT INTO portfolio_stocks_daily
+				(timestamp,symbol,open,high,low,close,volume)
+				VALUES (:timestamp, :symbol, :open, :high, :low, :close, :volume)");
+
+			for($i=0; $i<$count; $i++){
+				$tmp = explode("\t",$res[$i]);
+
+				$res[$i] = array(floatval($tmp[0])*1000,floatval($tmp[2]),floatval($tmp[3]),floatval($tmp[4]),floatval($tmp[5]));
+				try {
+					oci_bind_by_name($statement, ":timestamp", $tmp[0]);
+					oci_bind_by_name($statement, ":symbol", $symbol);
+					oci_bind_by_name($statement, ":open", $tmp[2]);
+					oci_bind_by_name($statement, ":high", $tmp[3]);
+					oci_bind_by_name($statement, ":low", $tmp[4]);
+					oci_bind_by_name($statement, ":close", $tmp[5]);
+					oci_bind_by_name($statement, ":volume", $tmp[6]);
+					oci_execute($statement, OCI_NO_AUTO_COMMIT);
+				} catch (Exception $e) {
+					echo "Error: " . $e['message'];
+					die();
+				}
+			}
+
+			$r = oci_commit(self::$dbConn);
+
+			// echo "this means the inserts succeeded: ".$r." and this is how many rows: ".$count;
+
+			if($r){
+				try {
+					$statement = oci_parse(self::$dbConn,
+						"INSERT INTO portfolio_stocks_fetched VALUES (:symbol)");
+					oci_bind_by_name($statement, ":symbol", $symbol);
+					oci_execute($statement);
+				} catch (Exception $e) {
+					echo "Error: " . $e['message'];
+					die();
+				}
+			}
+
+			$historic = array();
+			try {
+				$statement = oci_parse(self::$dbConn,
+					"SELECT *
+					FROM cs339.StocksDaily
+					WHERE symbol=:symbol
+					ORDER BY timestamp");
+				oci_bind_by_name($statement, ":symbol", $symbol);
+				oci_execute($statement);
+
+				while($row = oci_fetch_assoc($statement)){
+					$historic[] = array(floatval($row['TIMESTAMP'])*1000,floatval($row['OPEN']),floatval($row['HIGH']),floatval($row['LOW']),floatval($row['CLOSE']),floatval($row['VOLUME']));
+				}
+			} catch (Exception $e) {
+				echo "Error: " . $e['message'];
+				die();
+			}
+
+			return array_merge($historic,$res);
+		}
 	}
 
 	public static function getCovariance ($symbols)

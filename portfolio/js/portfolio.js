@@ -27,10 +27,15 @@ window.portfolio = (function(){
 		});
 		$(document).on('ajaxStart', NProgress.start);
 		$(document).on('ajaxStop', NProgress.done);
+
+		$('button:submit').on('click',function(){
+			$(this).button('loading');
+		});
 	},
 
 	newUser = function(){
 		$('#navbar-items').html($('#template-new-user-navbar').html());
+		$('#content').html($('#template-new-user-content').html());
 		$('#login-form').on('submit', function(){
 			var data = {};
 			$(this).find('input').each(function(i, el){
