@@ -48,7 +48,7 @@ push @fields, "volume" if $vol;
 
 my $sql;
 
-$sql = "select " . join(",",@fields) . " from ".GetStockPrefix()."StocksDaily";
+$sql = "select " . join(",",@fields) . " from bsr618.StocksDaily";
 $sql.= " where symbol = '$symbol'";
 $sql.= " and timestamp >= $from" if $from;
 $sql.= " and timestamp <= $to" if $to;
@@ -56,7 +56,7 @@ $sql.= " order by timestamp";
 
 my $data = ExecStockSQL("TEXT",$sql);
 
-if (!$plot) { 
+if (!$plot) {
   print $data;
 } else {
 

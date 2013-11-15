@@ -40,7 +40,7 @@ class DatabaseOCI
         PutEnv("PORTF_DBUSER=".$GLOBALS['USERNAME']);
         PutEnv("PORTF_DBPASS=".$GLOBALS['PASSWORD']);
 
-        PutEnv('PATH=$PATH:~bsr618/www/portfolio/perlscripts');
-        PutEnv('PERL5LIB=$PERL5LIB:~bsr618/www/portfolio/perlscripts');
+        PutEnv('PATH=$PATH:/home/bsr618/www/portfolio/perlscripts');
+        PutEnv('PERL5LIB=$PERL5LIB:/home/bsr618/www/portfolio/perlscripts');
     }
 }

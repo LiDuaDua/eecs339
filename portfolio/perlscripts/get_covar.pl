@@ -33,25 +33,25 @@ for ($i=0;$i<=$#symbols;$i++) {
   $s1=$symbols[$i];
   for ($j=$i; $j<=$#symbols; $j++) {
     $s2=$symbols[$j];
-    
+
 #first, get means and vars for the individual columns that match
-    
-    $sql = "select count(*),avg(l.$field1),stddev(l.$field1),avg(r.$field2),stddev(r.$field2) from ".GetStockPrefix()."StocksDaily l join ".GetStockPrefix()."StocksDaily r on l.timestamp= r.timestamp where l.symbol='$s1' and r.symbol='$s2'";
+
+    $sql = "select count(*),avg(l.$field1),stddev(l.$field1),avg(r.$field2),stddev(r.$field2) from bsr618.StocksDaily l join bsr618.StocksDaily r on l.timestamp= r.timestamp where l.symbol='$s1' and r.symbol='$s2'";
     $sql.= " and l.timestamp>=$from" if $from;
     $sql.= " and l.timestamp<=$to" if $to;
-    
+
     ($count, $mean_f1,$std_f1, $mean_f2, $std_f2) = ExecStockSQL("ROW",$sql);
-    
+
     #skip this pair if there isn't enough data
 
     if ($count<30) { # not enough data
       $covar{$s1}{$s2}='NODAT';
       $corrcoeff{$s1}{$s2}='NODAT';
     } else {
-      
+
       #otherwise get the covariance
 
-      $sql = "select avg((l.$field1 - $mean_f1)*(r.$field2 - $mean_f2)) from ".GetStockPrefix()."StocksDaily l join ".GetStockPrefix()."StocksDaily r on  l.timestamp=r.timestamp where l.symbol='$s1' and r.symbol='$s2'";
+      $sql = "select avg((l.$field1 - $mean_f1)*(r.$field2 - $mean_f2)) from bsr618.StocksDaily l join bsr618.StocksDaily r on  l.timestamp=r.timestamp where l.symbol='$s1' and r.symbol='$s2'";
       $sql.= " and l.timestamp>= $from" if $from;
       $sql.= " and l.timestamp<= $to" if $to;
 
@@ -80,9 +80,9 @@ if ($simple && $#symbols==1) {
     print "Covariance Matrix\n";
   }
   print "Rows: $field1\nCols: $field2\n\n";
-  
+
   print join("\t","-----",@symbols),"\n";
-  
+
   for ($i=0;$i<=$#symbols;$i++) {
     $s1=$symbols[$i];
     print $s1;

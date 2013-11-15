@@ -8,6 +8,7 @@
 	<link rel="stylesheet" href="./css/bootstrap.css">
 	<link rel="stylesheet" href="./css/bootstrap-theme.css">
 	<link rel="stylesheet" href="./css/typeahead.js-bootstrap.css">
+	<link rel="stylesheet" href="./css/daterangepicker-bs3.css">
 	<link rel="stylesheet" href="./css/nprogress.css">
 	<style>
 		input{
@@ -191,6 +192,15 @@
 					<h4 class="modal-title">Stock Info</h4>
 				</div>
 				<div class="modal-body" id="stock-chart" style="height: 500px;"></div>
+				<div class="modal-footer">
+					<form id="predict-form">
+						<span class="helper-inline">Add prediction of </span>
+						<input type="number" min="1" max="10" name="steps" value="4" />
+						<input type="text" name="symbol" style="display:none;" />
+						<span class="helper-inline">Steps</span>
+						<button class="btn btn-primary" type="submit">Predict</button>
+					</form>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -200,6 +210,8 @@
 	<script type="text/javascript" src="./js/typeahead.js"></script>
 	<script type="text/javascript" src="http://code.highcharts.com/stock/highstock.js"></script>
 	<script type="text/javascript" src="./js/md5.js"></script>
+	<script type="text/javascript" src="./js/moment.min.js"></script>
+	<script type="text/javascript" src="./js/daterangepicker.js"></script>
 	<script type="text/javascript" src="./js/nprogress.js"></script>
 	<script type="text/javascript" src="./js/portfolio.js"></script>
 	<script type="text/javascript">
@@ -264,6 +276,10 @@
 						<% _.each(stocks, function(stock){ pmv += parseInt(stock.SHARES,10)*parseFloat(stock.CLOSE,10); }); %>
 						<p class="lead">Present Market Value: $<%= pmv.toFixed(2) %></p>
 					</div>
+					<div class="col-sm-3">
+						<input type="text" name="daterange" class="form-control" id="covar-range" />
+						<div class="btn btn-primary" id="get-covar">Get Covariance</div>
+					</div>
 				</div>
 				<table class="table table-striped">
 					<thead>
@@ -279,7 +295,7 @@
 					</thead>
 					<% _.each(stocks, function(stock){ %>
 						<tr>
-							<td><a href="#" onclick="portfolio.stockDetails('<%= stock.SYMBOL %>');"><%= stock.SYMBOL %></a></td>
+							<td><a href="#" class="stock-name" onclick="portfolio.stockDetails('<%= stock.SYMBOL %>');"><%= stock.SYMBOL %></a></td>
 							<td><%= stock.SHARES %></td>
 							<td><%= stock.OPEN %></td>
 							<td><%= stock.HIGH %></td>

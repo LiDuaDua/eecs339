@@ -1,5 +1,5 @@
 /*jshint indent: 4, quotmark: single, strict: true */
-/* global $: false, _: false, CryptoJS: false, NProgress: false */
+/* global $: false, _: false, CryptoJS: false, NProgress: false, moment: false */
 window.portfolio = (function(){
 	'use strict';
 
@@ -26,7 +26,10 @@ window.portfolio = (function(){
 			trickleRate: 0.1
 		});
 		$(document).on('ajaxStart', NProgress.start);
-		$(document).on('ajaxStop', NProgress.done);
+		$(document).on('ajaxStop', function(){
+			NProgress.done();
+			$('button:submit').button('reset');
+		});
 
 		$('button:submit').on('click',function(){
 			$(this).button('loading');
@@ -179,6 +182,36 @@ window.portfolio = (function(){
 					renderPortfolio(LS.currentPortfolio);
 				}
 			});
+
+			$('#covar-range').daterangepicker({
+				ranges: {
+					'Today': [moment(), moment()],
+					'Yesterday': [moment().subtract('days', 1), moment().subtract('days', 1)],
+					'Last 7 Days': [moment().subtract('days', 6), moment()],
+					'Last 30 Days': [moment().subtract('days', 29), moment()],
+					'This Month': [moment().startOf('month'), moment().endOf('month')],
+					'Last Month': [moment().subtract('month', 1).startOf('month'), moment().subtract('month', 1).endOf('month')]
+				},
+				startDate: moment().subtract('days', 29),
+				endDate: moment()
+			});
+
+			$('#covar-range').val(moment().subtract('days',29).format('M/D/YYYY') + ' - ' + moment().format('M/D/YYYY'));
+
+			$('#get-covar').on('click',function(){
+				$('#get-covar').button('loading');
+				var stocks = [];
+				$('.stock-name').each(function(i,el){
+					stocks.push($(this).text());
+				});
+
+				var dates = $('#covar-range').val().split(' - ');
+
+				$.getJSON('./ajax/getCovariance.php',{symbols: stocks, from: dates[0], to: dates[1]},function(reply){
+					alert(reply);
+					$('#get-covar').button('reset');
+				});
+			});
 		});
 	},
 
@@ -200,6 +233,37 @@ window.portfolio = (function(){
 					name: symbol,
 					data: data
 				}]
+			});
+
+			$('#predict-form').find('input[name="symbol"]').val(symbol);
+
+			$('#predict-form').on('submit',function(){
+				var data = {};
+				$(this).find('input').each(function(i, el){
+					data[el.name] = el.value;
+				});
+
+				$.getJSON('./ajax/getPrediction.php',data,function(reply){
+					var chart = $('#stock-chart').highcharts(),
+					data = [], tmp;
+
+					if(reply.length > 0){
+						_.each(reply,function(el,i){
+							tmp = parseFloat(el,10);
+							data.push([parseInt(moment().add('days',i+1).format('X'),10)*1000, tmp, tmp, tmp, tmp]);
+						});
+
+						console.log(data);
+
+						chart.addSeries({
+							name: 'prediction',
+							type: 'candlestick',
+							data: data
+						});
+					}
+				});
+
+				return false;
 			});
 		});
 	},
