@@ -165,7 +165,6 @@ class Portfolio
 public static function variationBeta($symbol, $start, $end)
 	{
 		self::initializeConnection();
-		
 		for ($i = 0; $i< count($symbol);$i++){
 			$statement = oci_parse(self::$dbConn,
 	 			"SELECT stddev(close) 
@@ -177,7 +176,8 @@ public static function variationBeta($symbol, $start, $end)
 	 		oci_execute($statement);
 	 		$stddev = oci_fetch_assoc($statement);
 			$finalstddev = reset($stddev);
-
+echo "stddev";
+echo reset($stddev);
 			$statement = oci_parse(self::$dbConn,
 				"SELECT count(close) 
 				FROM cs339.StocksDaily 
@@ -189,7 +189,8 @@ public static function variationBeta($symbol, $start, $end)
 			$count = oci_fetch_assoc($statement);
 			
 			$finalcount = reset($count);
-
+echo "finalcount";
+echo $finalcount;
 			$statement = oci_parse(self::$dbConn,
 				"SELECT AVG(close) 
 				FROM cs339.StocksDaily 
@@ -201,16 +202,19 @@ public static function variationBeta($symbol, $start, $end)
 			$average = oci_fetch_assoc($statement);
 
 			$finalaverage = reset($average);
+echo "finalaverage";
+echo $finalaverage;
 			$statement = oci_parse(self::$dbConn,
 				"SELECT close
 				FROM portfolio_stocks_daily
 				WHERE symbol = :symbol");
 			oci_bind_by_name($statement,":symbol",$symbol);
 			oci_execute($statement);
-			//$currentClose = oci_fetch_assoc($statement);
-			$currentClose = self::selectOrFetchStock($symbol['SYMBOL']);
+			$currentClose = oci_fetch_assoc($statement);
+
 			$finalcurrentClose = reset($currentClose);
-		
+echo "finalcurrentClose";
+echo $finalcurrentClose;
 
 			$statement = oci_parse(self::$dbConn,
 				"SELECT AVG(close) 
@@ -250,10 +254,10 @@ public static function variationBeta($symbol, $start, $end)
 			$variation = ($finalstddev/$finalaverage);
 			$covariance = ((($finalcurrentClose - $finalaverageOverall) * ($finalcurrentClose - $finalstddevOverall))/$finalcountOverall); //this is our covariance. How did you want us to return the covariances?
 			$beta = $covariance/$finalstddev;
-			$list[$symbol] = array($variation,$beta);
-			
+
+			return $variation;
+
 		}
-		return $list;
 
 	}
 
