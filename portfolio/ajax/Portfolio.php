@@ -454,4 +454,15 @@ class Portfolio
 
 		return $res;
 	}
+
+	public static function predictStocks ($symbol)
+	{
+		DatabaseOCI::setEnv();
+
+		$command = "~bsr618/www/portfolio/perlscripts/time_series_symbol_project.pl AAPL 4 AWAIT 200 AR 16";
+		$res = array();
+		exec($command,$res);
+
+		print_r($res);
+	}
 }
