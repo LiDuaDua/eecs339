@@ -2,6 +2,7 @@ DROP TABLE portfolio_stock_holdings;
 DROP TABLE portfolio_portfolios;
 DROP TABLE portfolio_users;
 DROP TABLE portfolio_stocks_daily;
+DROP TABLE portfolio_stocks_fetched;
 DROP SEQUENCE portfolio_id_seq;
 DROP SEQUENCE stock_holdings_id_seq;
 
@@ -34,6 +35,8 @@ BEGIN
 END;
 /
 
+-- symbol had initially referenced cs339.StocksSymbols, but frequent errors about "resource in use" when trying
+-- to delete the table caused us to remove the reference.
 CREATE TABLE portfolio_stock_holdings(
 	id INT NOT NULL PRIMARY KEY,
 	portfolio REFERENCES portfolio_portfolios(id) NOT NULL,
@@ -68,8 +71,8 @@ END stock_transaction;
 /
 
 CREATE TABLE portfolio_stocks_daily(
-	timestamp NUMBER NOT NULL,
 	symbol VARCHAR2(16) NOT NULL,
+	timestamp NUMBER NOT NULL,
 	open NUMBER NOT NULL,
 	high NUMBER NOT NULL,
 	low NUMBER NOT NULL,
@@ -79,6 +82,13 @@ CREATE TABLE portfolio_stocks_daily(
 
 ALTER TABLE portfolio_stocks_daily
 	ADD CONSTRAINT unique_symbol_per_day UNIQUE (timestamp, symbol);
+
+CREATE VIEW stocksdaily AS (SELECT * FROM portfolio_stocks_daily) UNION ALL (SELECT * FROM cs339.stocksdaily);
+
+-- just stores which stocks have had their 'full' history pulled from quotehist
+CREATE TABLE portfolio_stocks_fetched(
+	symbol VARCHAR2(16) NOT NULL PRIMARY KEY
+);
 
 
 INSERT INTO portfolio_users (username,full_name,password) VALUES ('root','Root User','b4b8daf4b8ea9d39568719e1e320076f');
