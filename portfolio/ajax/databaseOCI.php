@@ -42,5 +42,8 @@ class DatabaseOCI
 
         PutEnv('PATH=$PATH:/home/bsr618/www/portfolio/perlscripts');
         PutEnv('PERL5LIB=$PERL5LIB:/home/bsr618/www/portfolio/perlscripts');
+
+        // PutEnv('PATH=$PATH:/home/pdinda/339-f13/HANDOUT/portfolio');
+        // PutEnv('PERL5LIB=$PERL5LIB:/home/pdinda/339-f13/HANDOUT/portfolio');
     }
 }

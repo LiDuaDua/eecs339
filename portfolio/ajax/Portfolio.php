@@ -112,204 +112,6 @@ class Portfolio
 		return $list;
 	}
 
-	public static function getCovar($symbol, $start, $end)
-	{
-		self::initializeConnection();
-		for ($i = 0; $i< count($symbol);$i++){
-			$statement = oci_parse(self::$dbConn,
-	 			"SELECT stddev(close)
-	 			FROM cs339.StocksDaily
-	 			WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$row);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-	 		oci_execute($statement);
-	 		$stddev = oci_fetch_assoc($statement);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT count(close)
-				FROM cs339.StocksDaily
-				WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$row);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$count = oci_fetch_assoc($statement);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT AVG(close)
-				FROM cs339.StocksDaily
-				WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$row);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$average = oci_fetch_assoc($statement);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT close
-				FROM portfolio_stocks_daily
-				WHERE symbol = :symbol");
-			oci_bind_by_name($statement,":symbol",$row);
-			oci_execute($statement);
-			$currentClose = oci_fetch_assoc($statement);
-
-			$covariance = ((($currentClose - $average) * ($currentClose - $stddev))/$count); //this is our covariance. How did you want us to return the covariances?
-			$corrcoeff = $covariance/$stddev;
-
-		}
-
-
-	}
-
-public static function variationBeta($symbol, $start, $end)
-	{
-		self::initializeConnection();
-		
-		for ($i = 0; $i< count($symbol);$i++){
-			$statement = oci_parse(self::$dbConn,
-	 			"SELECT stddev(close)
-	 			FROM cs339.StocksDaily
-	 			WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-	 		oci_execute($statement);
-	 		$stddev = oci_fetch_assoc($statement);
-			$finalstddev = reset($stddev);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT count(close)
-				FROM cs339.StocksDaily
-				WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$count = oci_fetch_assoc($statement);
-			
-			$finalcount = reset($count);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT AVG(close)
-				FROM cs339.StocksDaily
-				WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$average = oci_fetch_assoc($statement);
-
-			$finalaverage = reset($average);
-			$statement = oci_parse(self::$dbConn,
-				"SELECT close
-				FROM portfolio_stocks_daily
-				WHERE symbol = :symbol");
-			oci_bind_by_name($statement,":symbol",$symbol);
-			oci_execute($statement);
-			//$currentClose = oci_fetch_assoc($statement);
-			$currentClose = self::selectOrFetchStock($symbol['SYMBOL']);
-			$finalcurrentClose = reset($currentClose);
-		
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT AVG(close)
-				FROM cs339.StocksDaily
-				WHERE timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$averageOverall = oci_fetch_assoc($statement);
-			$finalaverageOverall = reset($averageOverall);
-
-
-			$statement = oci_parse(self::$dbConn,
-	 			"SELECT stddev(close)
-	 			FROM cs339.StocksDaily
-	 			WHERE timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-	 		oci_execute($statement);
-	 		$stddevOverall = oci_fetch_assoc($statement);
-			$finalstddevOverall = reset($stddevOverall);
-
-			$statement = oci_parse(self::$dbConn,
-				"SELECT count(close)
-				FROM cs339.StocksDaily
-				WHERE timestamp >= :starttime and timestamp <= :endtime");
-	 		oci_bind_by_name($statement,":symbol",$symbol);
-	 		oci_bind_by_name($statement,":starttime", $start);
-	 		oci_bind_by_name($statement,":endtime",$end);
-			oci_execute($statement);
-			$countOverall = oci_fetch_assoc($statement);
-			$finalcountOverall = reset($countOverall);
-
-
-			$variation = ($finalstddev/$finalaverage);
-			$covariance = ((($finalcurrentClose - $finalaverageOverall) * ($finalcurrentClose - $finalstddevOverall))/$finalcountOverall); //this is our covariance. How did you want us to return the covariances?
-			$beta = $covariance/$finalstddev;
-			$list[$symbol] = array($variation,$beta);
-			
-		}
-		return $list;
-
-	}
-
-
-
-	// public static function variationBeta($portfolio_id)
-	// {
-	// 	self::initializeConnection();
-	// 	$statement = oci_parse(self::$dbConn,
-	// 		"SELECT symbol
-	// 		FROM portfolio_stock_holdings
-	// 		WHERE portfolio = :portfolio.id");
-	// 	oci_bind_by_name($statement, ":portfolio_id", $portfolio_id);
-	// 	oci_execute($statement);
-	// 	while (!(empty($row = oci_fetch_assoc($statement))))
-	// 	{
-	// 		$statement = oci_parse(self:$dbConn,
-	// 			"SELECT stddev(close)
-	// 			FROM cs339.StocksDaily
-	// 			WHERE symbol = :symbol");
-	// 		oci_bind_by_name($statement,":symbol",$row);
-	// 		oci_execute($statement);
-	// 		$stddev = oci_fetch_assoc($statement);
-
-	// 		$statement = oci_parse(self:$dbConn,
-	// 			"SELECT count(close)
-	// 			FROM cs339.StocksDaily
-	// 			WHERE symbol = :symbol");
-	// 		oci_bind_by_name($statement,":symbol",$row);
-	// 		oci_execute($statement);
-	// 		$count = oci_fetch_assoc($statement);
-
-	// 		$statement = oci_parse(self:$dbConn,
-	// 			"SELECT AVG(close)
-	// 			FROM cs339.StocksDaily
-	// 			WHERE symbol = :symbol");
-	// 		oci_bind_by_name($statement,":symbol",$row);
-	// 		oci_execute($statement);
-	// 		$average = oci_fetch_assoc($statement);
-
-	// 		$statement = oci_parse(self:dbConn,
-	// 			"SELECT close
-	// 			FROM portfolio_stocks_daily
-	// 			WHERE symbol = :symbol");
-	// 		oci_bind_by_name($statement,":symbol",$row);
-	// 		oci_execute($statement);
-	// 		$currentClose = oci_fetch_assoc($statement);
-
-	// 		$variation = ($stddev/$average);
-
-	// 		//We still don't know what Beta is
-
-	// 	}
-
-	// }
-
 	public static function addTransaction($portfolio, $shares, $type, $symbol, $cost, $total)
 	{
 		self::initializeConnection();
@@ -453,6 +255,23 @@ public static function variationBeta($symbol, $start, $end)
 			return $row;
 		} else {
 			$quote = self::quote($symbol);
+
+			# check for quote errors
+			if(!$quote['OPEN']){
+				$quote['OPEN'] = 0;
+			}
+			if(!$quote['HIGH']){
+				$quote['HIGH'] = 0;
+			}
+			if(!$quote['LOW']){
+				$quote['LOW'] = 0;
+			}
+			if(!$quote['CLOSE']){
+				$quote['CLOSE'] = 0;
+			}
+			if(!$quote['VOLUME']){
+				$quote['VOLUME'] = 0;
+			}
 
 			// oci_close(self::$dbConn);
 			self::initializeConnection();
@@ -650,10 +469,50 @@ public static function variationBeta($symbol, $start, $end)
 		return $res;
 	}
 
+	public static function variationBeta($symbols, $start, $end)
+	{
+		self::initializeConnection();
+
+		foreach($symbols as $symbol){
+			$hasFetched = self::hasFetchedQuoteHistory($symbol);
+
+			if(!$hasFetched){
+				self::quoteHistory($symbol);
+			}
+
+			$statement = oci_parse(self::$dbConn,
+	 			"SELECT stddev(close) AS stddev, count(close) AS count, avg(close) AS avg
+	 			FROM StocksDaily
+	 			WHERE symbol = :symbol and timestamp >= :starttime and timestamp <= :endtime");
+	 		oci_bind_by_name($statement,":symbol",$symbol);
+	 		oci_bind_by_name($statement,":starttime", $start);
+	 		oci_bind_by_name($statement,":endtime",$end);
+	 		oci_execute($statement);
+	 		$individual = oci_fetch_assoc($statement);
+
+			$quote = self::selectOrFetchStock($symbol);
+
+			$statement = oci_parse(self::$dbConn,
+				"SELECT stddev(close) AS stddev, count(close) AS count, avg(close) AS avg
+				FROM StocksDaily
+				WHERE timestamp >= :starttime and timestamp <= :endtime");
+	 		oci_bind_by_name($statement,":symbol",$symbol);
+	 		oci_bind_by_name($statement,":starttime", $start);
+	 		oci_bind_by_name($statement,":endtime",$end);
+			oci_execute($statement);
+			$overall = oci_fetch_assoc($statement);
+
+			$variation = ($individual['STDDEV']/$individual['AVG']);
+			$covariance = ((($quote['CLOSE'] - $overall['AVG']) * ($quote['CLOSE'] - $overall['STDDEV']))/$overall['COUNT']);
+			$beta = $covariance/$individual['STDDEV'];
+			$list[] = array("SYMBOL"=>$symbol, "VARIATION"=>$variation, "BETA"=>$beta);
+
+		}
+		return $list;
+	}
+
 	public static function getPrediction ($symbol,$steps)
 	{
-		DatabaseOCI::setEnv();
-
 		$hasFetched = self::hasFetchedQuoteHistory($symbol);
 
 		if(!$hasFetched){
@@ -663,10 +522,8 @@ public static function variationBeta($symbol, $start, $end)
 		$command = "/home/bsr618/www/portfolio/perlscripts/time_series_symbol_project.pl ".$symbol." ".$steps." AWAIT 200 AR 16";
 		$res = array();
 
-		echo $command."<br/>";
+		DatabaseOCI::setEnv();
 		exec($command,$res);
-
-		var_dump($res);
 
 		$out = array();
 		for($i=0; $i<$steps; $i++){
@@ -676,5 +533,20 @@ public static function variationBeta($symbol, $start, $end)
 		}
 
 		return $out;
+	}
+
+	public static function shannonRatchet ($symbol, $account)
+	{
+		DatabaseOCI::setEnv();
+
+		$quote = self::selectOrFetchStock($symbol);
+		$cost = $quote['CLOSE'];
+
+		$command = "/home/bsr618/www/portfolio/perlscripts/shannon_ratchet.pl ".$symbol." ".$account." ".$cost;
+		$res = array();
+
+		exec($command,$res);
+
+		return $res;
 	}
 }

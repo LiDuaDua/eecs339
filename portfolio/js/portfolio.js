@@ -100,6 +100,7 @@ window.portfolio = (function(){
 
 		$('#logout').on('click',logout);
 
+		$('#new-portfolio-form').off('submit');
 		$('#new-portfolio-form').on('submit', function(){
 			$.getJSON('./ajax/addPortfolio.php',{
 				name: $(this).find('input:first').val(),
@@ -117,6 +118,7 @@ window.portfolio = (function(){
 			return false;
 		});
 
+		$('#deposit-withdraw-form').off('submit');
 		$('#deposit-withdraw-form').on('submit', function(){
 			$('#deposit-withdraw').find('.alert-info').fadeOut();
 			var ammount = parseFloat($(this).find('input:first').val(),10) *
@@ -134,6 +136,7 @@ window.portfolio = (function(){
 			return false;
 		});
 
+		$('#add-transaction-form').off('submit');
 		$('#add-transaction-form').on('submit',function(){
 			$('#add-transaction').find('.alert-info').fadeOut();
 			var data = {};
@@ -157,12 +160,16 @@ window.portfolio = (function(){
 	},
 
 	renderPortfolio = function(ind){
-		$.getJSON('./ajax/getStockHoldings.php',{portfolio: portfolios[LS.currentPortfolio].ID},function(reply){
+		$.getJSON('./ajax/getStockHoldings.php',{portfolio: portfolios[ind].ID},function(reply){
 			var template = _.template($('#template-portfolio').html()),
 			list = [];
 
 			for(var i=0; i<portfolios.length; i++){
 				list.push(portfolios[i].NAME);
+			}
+
+			if(reply.length === 0){
+				reply = [];
 			}
 
 			$('#content').html(template({
@@ -172,6 +179,7 @@ window.portfolio = (function(){
 				stocks: reply
 			}));
 
+			$('#portfolio-list').off('click');
 			$('#portfolio-list').on('click','.portfolio-item',function(){
 				if(!$(this).hasClass('active')){
 					var list = $('#portfolio-list').find('.portfolio-item');
@@ -183,39 +191,71 @@ window.portfolio = (function(){
 				}
 			});
 
-			$('#covar-range').daterangepicker({
+			$('#stats-range').daterangepicker({
 				ranges: {
-					'Today': [moment(), moment()],
-					'Yesterday': [moment().subtract('days', 1), moment().subtract('days', 1)],
-					'Last 7 Days': [moment().subtract('days', 6), moment()],
 					'Last 30 Days': [moment().subtract('days', 29), moment()],
-					'This Month': [moment().startOf('month'), moment().endOf('month')],
-					'Last Month': [moment().subtract('month', 1).startOf('month'), moment().subtract('month', 1).endOf('month')]
+					'Last Year': [moment().subtract('year', 1), moment()],
+					'Last 5 Years': [moment().subtract('year', 5), moment()],
+					'Last 20 Years': [moment().subtract('year',20), moment()]
 				},
 				startDate: moment().subtract('days', 29),
 				endDate: moment()
 			});
 
-			$('#covar-range').val(moment().subtract('days',29).format('M/D/YYYY') + ' - ' + moment().format('M/D/YYYY'));
+			$('#stats-range').val(moment().subtract('days',29).format('M/D/YYYY') + ' - ' + moment().format('M/D/YYYY'));
 
-			$('#get-covar').on('click',function(){
-				$('#get-covar').button('loading');
+			$('#get-stats').on('click',function(){
+				$('#get-stats').button('loading');
+				$('#variation-beta').empty();
+				$('#covariance-output').empty();
 				var stocks = [];
-				$('.stock-name').each(function(i,el){
+				$('.stock-name').each(function(){
 					stocks.push($(this).text());
 				});
 
-				var dates = $('#covar-range').val().split(' - ');
+				var dates = $('#stats-range').val().split(' - ');
 
-				$.getJSON('./ajax/getCovariance.php',{symbols: stocks, from: dates[0], to: dates[1]},function(reply){
-					alert(reply);
-					$('#get-covar').button('reset');
+				$.getJSON('./ajax/getStatistics.php',{symbols: stocks, from: dates[0], to: dates[1]},function(reply){
+					$('#get-stats').button('reset');
+
+					$('<pre />').text(reply.COVARIANCE.join('\n')).appendTo('#covariance-output');
+
+					_.each(reply.BETA, function(el){
+						$('#variation-beta')
+							.append($('<tr/>')
+								.append($('<td/>').text(el.SYMBOL))
+								.append($('<td/>').text(parseFloat(el.VARIATION,10).toFixed(5)))
+								.append($('<td/>').text(parseFloat(el.BETA,10).toFixed(5))));
+					});
+
+					$('#statistics').modal('show');
+				});
+			});
+
+			$('#run-auto-trader').on('click',function(){
+				$('#run-auto-trader').button('loading');
+				$('#auto-trader-body').empty();
+				var stocks = [];
+				$('.stock-name').each(function(){
+					stocks.push($(this).text());
+				});
+
+				$.getJSON('./ajax/shannonRatchet.php',{symbols: stocks, cash_account: portfolios[LS.currentPortfolio].CASH_ACCOUNT},function(reply){
+					$('#run-auto-trader').button('reset');
+
+					_.each(reply,function(el){
+						$('<h4 />').text(el.SYMBOL).appendTo('#auto-trader-body');
+						$('<pre />').text(el.TRADER).appendTo('#auto-trader-body');
+					});
+
+					$('#auto-trader').modal('show');
 				});
 			});
 		});
 	},
 
 	stockDetails = function(symbol){
+		$('#stock-chart').empty();
 		$.getJSON('./ajax/quotehist.php',{symbol: symbol}, function(data){
 			$('#stock-info').modal('show');
 			$('#stock-chart').highcharts('StockChart',{
@@ -250,16 +290,15 @@ window.portfolio = (function(){
 					if(reply.length > 0){
 						_.each(reply,function(el,i){
 							tmp = parseFloat(el,10);
-							data.push([parseInt(moment().add('days',i+1).format('X'),10)*1000, tmp, tmp, tmp, tmp]);
+							data.push([parseInt(moment().add('days',i+1).format('X'),10)*1000, tmp]);
 						});
-
-						console.log(data);
 
 						chart.addSeries({
 							name: 'prediction',
-							type: 'candlestick',
 							data: data
 						});
+
+						chart.xAxis[0].setExtremes(parseInt(moment().subtract('days',5).format('X'),10)*1000,parseInt(moment().add('days',reply.length).format('X'),10)*1000);
 					}
 				});
 
@@ -273,6 +312,7 @@ window.portfolio = (function(){
 			symbols = reply;
 			$('#symbol-input').typeahead({name: 'stock-symbols', local: symbols});
 			$('#symbol-input').on('typeahead:closed',function(){
+				$('#add-transaction-form').find('button:submit').button('loading');
 				var sym = $(this).val(),
 					ind = symbols.indexOf(sym);
 
@@ -280,8 +320,9 @@ window.portfolio = (function(){
 					$.getJSON('./ajax/quote.php',{symbol: symbols[ind]},function(reply){
 						var close = parseFloat(reply.CLOSE,10),
 							shares = parseInt($('#symbol-shares').val(),10);
-						$('#symbol-cost').val(close);
-						$('#symbol-total').val(close*shares);
+						$('#symbol-cost').val(close.toFixed(2));
+						$('#symbol-total').val((close*shares).toFixed(2));
+						$('#add-transaction-form').find('button:submit').button('reset');
 					});
 				}
 			});
@@ -290,7 +331,7 @@ window.portfolio = (function(){
 				var shares = parseInt($(this).val(),10),
 					close = parseFloat($('#symbol-cost').val(),10);
 
-				$('#symbol-total').val(shares*close);
+				$('#symbol-total').val((shares*close).toFixed(2));
 			});
 		});
 	},
@@ -313,6 +354,7 @@ window.portfolio = (function(){
 		LS.portfolio_full_name = '';
 		LS.portfolio_username = '';
 		LS.portfolio_password = '';
+		LS.currentPortfolio = '';
 
 		newUser();
 	},
