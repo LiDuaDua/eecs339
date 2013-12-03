@@ -368,9 +368,8 @@ ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 
 	//for now, this code has never ran before
 	BTreeNode* node = new BTreeNode(BTREE_LEAF_NODE, b.info.keysize, b.info.valuesize, b.info.blocksize);
-	cout << "I'm here";
+	node->info.numkeys++;
 	node->SetKey(0,key);
-	cout << "now im here";
 	node->SetVal(0,value);
 
 	VALUE_T blah;
