@@ -24,3 +24,10 @@ portfolio/ajax/vars.php
 *.exe
 *.out
 *.app
+
+*.bitmap
+*.config
+*.data
+*.input
+*.refout
+*.yourout
