@@ -357,13 +357,18 @@ ERROR_T BTreeIndex::Lookup(const KEY_T &key, VALUE_T &value)
 
 ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 {
+	return InsertInternal(superblock.info.rootnode, key, value);
+}
+
+ERROR_T BTreeIndex::InsertInternal(const SIZE_T &node, const KEY_T &key, const VALUE_T &value)
+{
 	BTreeNode b;
 	ERROR_T rc;
 	SIZE_T offset;
 	KEY_T testkey;
 	SIZE_T ptr;
 
-	rc = b.Unserialize(buffercache,superblock.info.rootnode);
+	rc = b.Unserialize(buffercache, node);
 
 	if (rc!=ERROR_NOERROR) {
 		return rc;
@@ -380,7 +385,7 @@ ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 			b.SetKey(0, key);
 			b.SetPtr(0, ptr);
 
-			rc = b.Serialize(buffercache,superblock.info.rootnode);
+			rc = b.Serialize(buffercache, node);
 			return rc;
 		}
 	case BTREE_INTERIOR_NODE:
@@ -395,14 +400,14 @@ ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 				// this one, if it exists
 				rc=b.GetPtr(offset,ptr);
 				if (rc) { return rc; }
-				return Insert(key,value);
+				return InsertInternal(ptr, key, value);
 			}
 		}
 		// if we got here, we need to go to the next pointer, if it exists
 		if (b.info.numkeys>0) {
 			rc=b.GetPtr(b.info.numkeys,ptr);
 			if (rc) { return rc; }
-			return Insert(key,value);
+			return InsertInternal(ptr, key, value);
 		} else {
 			// There are no keys at all on this node, so nowhere to go
 			return ERROR_NONEXISTENT;
