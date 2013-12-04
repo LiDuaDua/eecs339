@@ -142,7 +142,7 @@ ERROR_T  BTreeNode::Unserialize(BufferCache *b, const SIZE_T blocknum)
 
 char * BTreeNode::ResolveKey(const SIZE_T offset) const
 {
-  cout << "numkeys: " << info.numkeys << " offset: " << offset;
+  //cout << "numkeys: " << info.numkeys << " offset: " << offset;
   switch (info.nodetype) {
   case BTREE_INTERIOR_NODE:
   case BTREE_ROOT_NODE:

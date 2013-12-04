@@ -359,6 +359,9 @@ ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 {
 	BTreeNode b;
 	ERROR_T rc;
+	SIZE_T offset;
+	KEY_T testkey;
+	SIZE_T ptr;
 
 	rc = b.Unserialize(buffercache,superblock.info.rootnode);
 
@@ -366,21 +369,118 @@ ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 		return rc;
 	}
 
-	//for now, this code has never ran before
-	BTreeNode* node = new BTreeNode(BTREE_LEAF_NODE, b.info.keysize, b.info.valuesize, b.info.blocksize);
-	node->info.numkeys++;
-	node->SetKey(0,key);
-	node->SetVal(0,value);
+	switch (b.info.nodetype) {
+	case BTREE_ROOT_NODE:
+		if (b.info.numkeys == 0) {
+			rc = Create(BTREE_LEAF_NODE, key, value, ptr);
 
-	VALUE_T blah;
+			if (rc) { return rc; }
 
-	node->GetVal(0,blah);
+			b.info.numkeys++;
+			b.SetKey(0, key);
+			b.SetPtr(0, ptr);
+
+			rc = b.Serialize(buffercache,superblock.info.rootnode);
+			return rc;
+		}
+	case BTREE_INTERIOR_NODE:
+		// Scan through key/ptr pairs
+		//and recurse if possible
+		for (offset=0;offset<b.info.numkeys;offset++) {
+			rc=b.GetKey(offset,testkey);
+			if (rc) {  return rc; }
+			if (key<testkey || key==testkey) {
+				// OK, so we now have the first key that's larger
+				// so we ned to recurse on the ptr immediately previous to
+				// this one, if it exists
+				rc=b.GetPtr(offset,ptr);
+				if (rc) { return rc; }
+				return Insert(key,value);
+			}
+		}
+		// if we got here, we need to go to the next pointer, if it exists
+		if (b.info.numkeys>0) {
+			rc=b.GetPtr(b.info.numkeys,ptr);
+			if (rc) { return rc; }
+			return Insert(key,value);
+		} else {
+			// There are no keys at all on this node, so nowhere to go
+			return ERROR_NONEXISTENT;
+		}
+		break;
+	case BTREE_LEAF_NODE:
+		// Scan through keys looking for matching value
+		for (offset=0;offset<b.info.numkeys;offset++) {
+			rc=b.GetKey(offset,testkey);
+			if (rc) {  return rc; }
+			if (testkey==key) {
+				// if (op==BTREE_OP_LOOKUP) {
+				// 	return b.GetVal(offset,value);
+				// } else {
+				// 	ERROR_T out = b.SetVal(offset,value);
+				// 	if(out == ERROR_NOERROR){
+				// 		return b.Serialize(buffercache,node);
+				// 	}else{
+				// 		return out;
+				// 	}
+				// }
+			}
+		}
+		return ERROR_NONEXISTENT;
+		break;
+	default:
+		// We can't be looking at anything other than a root, internal, or leaf
+		return ERROR_INSANE;
+		break;
+	}
+
+	return ERROR_INSANE;
+}
+
+ERROR_T BTreeIndex::Create(int nodetype, const KEY_T &key, const VALUE_T &value, SIZE_T &n)
+{
+	BTreeNode p;
+	ERROR_T rc;
+
+	rc = p.Unserialize(buffercache,superblock.info.rootnode);
+
+	if (rc!=ERROR_NOERROR) {
+		return rc;
+	}
+
+	BTreeNode* node = new BTreeNode(nodetype, p.info.keysize, p.info.valuesize, p.info.blocksize);
+
+	switch (nodetype) {
+	case BTREE_LEAF_NODE:
+		node->info.numkeys++;
+		node->SetKey(0,key);
+		node->SetVal(0,value);
+
+		AllocateNode(n);
+
+		rc = node->Serialize(buffercache,n);
+	}
+
+
+
+
+	//BTreeNode c;
+
+	// rc = c.Unserialize(buffercache,blocknum);
+
+	// VALUE_T blah;
+
+	// c.GetVal(0,blah);
+
+	// cout << "val: " << blah.data;
 
 	//b.setKey(1,)
 
 	//cout << "Sup dudes: " << b.info.keysize << " " << b.info.valuesize << " " << b.info.blocksize << " " << b.info.rootnode << " " << b.info.freelist << " " << b.info.numkeys;
 
-	cout << "Sup dudes: " << blah;
+	//cout << "Sup dudes: " << blah.data;
+
+
 
 	return rc;
 }
