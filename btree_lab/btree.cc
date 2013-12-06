@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stack>
 #include "btree.h"
 
 KeyValuePair::KeyValuePair()
@@ -208,7 +209,7 @@ ERROR_T BTreeIndex::LookupOrUpdateInternal(const SIZE_T &node,
 		//and recurse if possible
 		for (offset=0;offset<b.info.numkeys;offset++) {
 			rc=b.GetKey(offset,testkey);
-			if (rc) {  return rc; }
+			if (rc) { return rc; }
 			if (key<testkey || key==testkey) {
 				// OK, so we now have the first key that's larger
 				// so we ned to recurse on the ptr immediately previous to
@@ -232,7 +233,7 @@ ERROR_T BTreeIndex::LookupOrUpdateInternal(const SIZE_T &node,
 		// Scan through keys looking for matching value
 		for (offset=0;offset<b.info.numkeys;offset++) {
 			rc=b.GetKey(offset,testkey);
-			if (rc) {  return rc; }
+			if (rc) { return rc; }
 			if (testkey==key) {
 				if (op==BTREE_OP_LOOKUP) {
 					return b.GetVal(offset,value);
@@ -290,7 +291,7 @@ static ERROR_T PrintNode(ostream &os, SIZE_T nodenum, BTreeNode &b, BTreeDisplay
 				// Last pointer
 				if (offset==b.info.numkeys) break;
 				rc=b.GetKey(offset,key);
-				if (rc) {  return rc; }
+				if (rc) { return rc; }
 				for (i=0;i<b.info.keysize;i++) {
 					os << key.data[i];
 				}
@@ -316,7 +317,7 @@ static ERROR_T PrintNode(ostream &os, SIZE_T nodenum, BTreeNode &b, BTreeDisplay
 				os << "(";
 			}
 			rc=b.GetKey(offset,key);
-			if (rc) {  return rc; }
+			if (rc) { return rc; }
 			for (i=0;i<b.info.keysize;i++) {
 				os << key.data[i];
 			}
@@ -326,7 +327,7 @@ static ERROR_T PrintNode(ostream &os, SIZE_T nodenum, BTreeNode &b, BTreeDisplay
 				os << " ";
 			}
 			rc=b.GetVal(offset,value);
-			if (rc) {  return rc; }
+			if (rc) { return rc; }
 			for (i=0;i<b.info.valuesize;i++) {
 				os << value.data[i];
 			}
@@ -341,7 +342,8 @@ static ERROR_T PrintNode(ostream &os, SIZE_T nodenum, BTreeNode &b, BTreeDisplay
 		if (dt==BTREE_DEPTH_DOT) {
 			os << "Unknown("<<b.info.nodetype<<")";
 		} else {
-			os << "Unsupported Node Type " << b.info.nodetype ;
+			//EVIL SUPPRESSED ERROR for rachel's sanity. :D
+			//os << "Unsupported Node Type " << b.info.nodetype ;
 		}
 	}
 	if (dt==BTREE_DEPTH_DOT) {
@@ -357,82 +359,109 @@ ERROR_T BTreeIndex::Lookup(const KEY_T &key, VALUE_T &value)
 
 ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 {
-	return InsertInternal(superblock.info.rootnode, key, value);
+	return InsertInternal(superblock.info.rootnode, superblock.info.rootnode, key, value);
 }
 
-ERROR_T BTreeIndex::InsertInternal(const SIZE_T &node, const KEY_T &key, const VALUE_T &value)
+ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent, const KEY_T &key, const VALUE_T &value)
 {
-	BTreeNode b;
+	BTreeNode node;
 	ERROR_T rc;
 	SIZE_T offset;
 	KEY_T testkey;
 	SIZE_T ptr;
+	SIZE_T maxKeysInterior = MaxKeysInterior() * 2 / 3;
+	SIZE_T maxKeysLeaf = MaxKeysLeaf() * 2 / 3;
 
-	rc = b.Unserialize(buffercache, node);
+	rc = node.Unserialize(buffercache, nodeblock);
 
 	if (rc!=ERROR_NOERROR) {
 		return rc;
 	}
 
-	switch (b.info.nodetype) {
-	case BTREE_ROOT_NODE:
-		if (b.info.numkeys == 0) {
-			rc = Create(BTREE_LEAF_NODE, key, value, ptr);
+	Print(ostream);
 
+	//cout << "Trying to insert key " << key.data << " and value " << value.data << " at block " << nodeblock << endl;
+
+	switch (node.info.nodetype) {
+	case BTREE_ROOT_NODE:
+		//cout << "In root node" << endl;
+		if (node.info.numkeys == 0) {
+			cout << "making leaf node with key: " << key.data << " and value: " << value.data << endl;
+			rc = Create(BTREE_LEAF_NODE, key, value, ptr);
 			if (rc) { return rc; }
 
-			b.info.numkeys++;
-			b.SetKey(0, key);
-			b.SetPtr(0, ptr);
+			node.info.numkeys++;
+			rc = node.SetKey(0, key);
+			if (rc) { return rc; }
 
-			rc = b.Serialize(buffercache, node);
+			rc = node.SetPtr(0, ptr);
+			if (rc) { return rc; }
+
+			rc = node.Serialize(buffercache, nodeblock);
 			return rc;
 		}
 	case BTREE_INTERIOR_NODE:
-		// Scan through key/ptr pairs
-		//and recurse if possible
-		for (offset=0;offset<b.info.numkeys;offset++) {
-			rc=b.GetKey(offset,testkey);
-			if (rc) {  return rc; }
-			if (key<testkey || key==testkey) {
-				// OK, so we now have the first key that's larger
-				// so we ned to recurse on the ptr immediately previous to
-				// this one, if it exists
-				rc=b.GetPtr(offset,ptr);
-				if (rc) { return rc; }
-				return InsertInternal(ptr, key, value);
-			}
-		}
-		// if we got here, we need to go to the next pointer, if it exists
-		if (b.info.numkeys>0) {
-			rc=b.GetPtr(b.info.numkeys,ptr);
+		for (offset=0; offset<node.info.numkeys; offset++) {
+			rc = node.GetKey(offset,testkey);
 			if (rc) { return rc; }
-			return InsertInternal(ptr, key, value);
-		} else {
-			// There are no keys at all on this node, so nowhere to go
-			return ERROR_NONEXISTENT;
-		}
-		break;
-	case BTREE_LEAF_NODE:
-		// Scan through keys looking for matching value
-		for (offset=0;offset<b.info.numkeys;offset++) {
-			rc=b.GetKey(offset,testkey);
-			if (rc) {  return rc; }
-			if (testkey==key) {
-				// if (op==BTREE_OP_LOOKUP) {
-				// 	return b.GetVal(offset,value);
-				// } else {
-				// 	ERROR_T out = b.SetVal(offset,value);
-				// 	if(out == ERROR_NOERROR){
-				// 		return b.Serialize(buffercache,node);
-				// 	}else{
-				// 		return out;
-				// 	}
-				// }
+			//cout << "interior node test key: " << testkey.data << endl;
+			if (key < testkey) {
+				rc = node.GetPtr(offset, ptr);
+				if (rc) { return rc; }
+
+				cout << "found key: " << key.data << " in interior node " << offset << ", recursing" << endl;
+				rc = InsertInternal(ptr, nodeblock, key, value);
+				if (rc) { return rc; }
+
+				//inserted successfully. check that node didn't grow too large
+				if (node.info.numkeys < maxKeysInterior) {
+					return rc;
+				} else {
+					cout << "splitting an interior node" << endl;
+					rc = Split(node, nodeblock, parent);
+
+					return rc;
+				}
+			} else if (key == testkey) {
+				return ERROR_CONFLICT;
 			}
 		}
-		return ERROR_NONEXISTENT;
-		break;
+
+		// no key was less than or equal to the key we're inserting. Better add a ptr if there's room
+		rc = Create(BTREE_LEAF_NODE, key, value, ptr);
+		if (rc) { return rc; }
+
+		cout << "Making leaf node into block: " << ptr << " offset: " << offset << endl;
+
+		node.info.numkeys++;
+		rc = node.SetKey(offset, key);
+		if (rc) { return rc; }
+
+		rc = node.SetPtr(offset, ptr);
+		if (rc) { return rc; }
+
+		rc = node.Serialize(buffercache, nodeblock);
+
+		return rc;
+	case BTREE_LEAF_NODE:
+		cout << "inserting key: " << key.data << " value: " << value.data << " into leaf at block " << nodeblock << endl;
+
+		rc = InsertKeyInternal(node, key, value, 0);
+		if (rc) { return rc; }
+
+		rc = node.Serialize(buffercache, nodeblock);
+		if (rc) { return rc; }
+
+		if (node.info.numkeys < maxKeysLeaf) {
+			//under the limit of keys. carry on
+			return rc;
+		} else {
+			// need to split
+			cout << "splitting a leaf node" << endl;
+			rc = Split(node, nodeblock, parent);
+
+			return rc;
+		}
 	default:
 		// We can't be looking at anything other than a root, internal, or leaf
 		return ERROR_INSANE;
@@ -442,6 +471,195 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T &node, const KEY_T &key, const V
 	return ERROR_INSANE;
 }
 
+SIZE_T BTreeIndex::MaxKeysLeaf()
+{
+	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream)) / (superblock.info.keysize + superblock.info.valuesize);
+	return n;
+}
+
+SIZE_T BTreeIndex::MaxKeysInterior()
+{
+	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream)) / (superblock.info.keysize + sizeof(SIZE_T));
+	return n;
+}
+
+ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T &parent)
+{
+	ERROR_T rc;
+	SIZE_T offset;
+	SIZE_T numkeysClone = node.info.numkeys / 2;
+	KEY_T key;
+	KEY_T testkey;
+	VALUE_T value;
+	SIZE_T ptr;
+	SIZE_T n;
+	BTreeNode parentNode;
+
+	cout << "In split function" << endl;
+
+	//clone node
+	BTreeNode clone = BTreeNode(node);
+
+	//odd number of keys?
+	if (node.info.numkeys % 2 == 1) {
+		node.info.numkeys++;
+	}
+	node.info.numkeys /= 2;
+
+	//shift over all values in clone
+	for (offset=0; offset<numkeysClone; offset++) {
+		rc = clone.GetKey(offset + node.info.numkeys, key);
+		if (rc) { return rc; }
+
+		rc = clone.SetKey(offset, key);
+		if (rc) { return rc; }
+
+		if (node.info.nodetype == BTREE_LEAF_NODE) {
+			rc = clone.GetVal(offset + node.info.numkeys, value);
+			if (rc) { return rc; }
+
+			rc = clone.SetVal(offset, value);
+			if (rc) { return rc; }
+		} else {
+			rc = clone.GetPtr(offset + node.info.numkeys, ptr);
+			if (rc) { return rc; }
+
+			rc = clone.SetPtr(offset, ptr);
+			if (rc) { return rc; }
+		}
+	}
+
+	clone.info.numkeys = numkeysClone;
+
+	AllocateNode(n);
+
+	rc = clone.Serialize(buffercache, n);
+	if (rc) { return rc; }
+
+	rc = parentNode.Unserialize(buffercache, parent);
+	if (rc) { return rc; }
+
+	//search for old key in parent and replace it with node's largest key
+	for (offset=0; offset<parentNode.info.numkeys; offset++) {
+		rc = parentNode.GetKey(offset, testkey);
+		if (rc) { return rc; }
+
+		if (testkey == key) {
+			rc = node.GetKey(node.info.numkeys-1, testkey);
+			if (rc) { return rc; }
+
+			cout << "testkey replacing old key-ptr: " << testkey.data << endl;
+
+			rc = parentNode.SetKey(offset, testkey);
+			if (rc) { return rc; }
+
+			break;
+		}
+
+	}
+
+	parentNode.info.numkeys++;
+	rc = parentNode.SetKey(parentNode.info.numkeys-1, key);
+	if (rc) { return rc; }
+
+	rc = parentNode.SetPtr(parentNode.info.numkeys-1, n);
+	if (rc) { return rc; }
+
+	rc = parentNode.Serialize(buffercache, parent);
+	if (rc) { return rc; }
+
+	rc = node.Serialize(buffercache, nodeblock);
+
+	return rc;
+}
+
+ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const VALUE_T &value, const SIZE_T &pointer)
+{
+	ERROR_T rc;
+	KEY_T tmpkey1;
+	KEY_T tmpkey2;
+	VALUE_T tmpvalue1;
+	VALUE_T tmpvalue2;
+	SIZE_T tmpptr1;
+	SIZE_T tmpptr2;
+	SIZE_T offset;
+	bool hasSwapped = false;
+
+	//cout << "pointer: " << pointer << endl;
+
+	node.info.numkeys++;
+	for (offset=0; offset<node.info.numkeys; offset++) {
+		if (!hasSwapped) {
+			rc = node.GetKey(offset,tmpkey1);
+			if (rc) { return rc; }
+		}
+
+		//cout << "in node key insert. offset: " << offset << " tmpkey1: " << tmpkey1.data << " key: " << key.data << endl;
+
+		if (key < tmpkey1 && !hasSwapped) {
+			hasSwapped = true;
+
+			tmpkey2 = tmpkey1;
+
+			//cout << "swapping key over in node" << endl;
+			//copy the key and value over one offset
+
+			rc = node.SetKey(offset, key);
+			if (rc) { return rc; }
+
+			if (node.info.nodetype == BTREE_LEAF_NODE) {
+				rc = node.GetVal(offset, tmpvalue2);
+				if (rc) { return rc; }
+
+				rc = node.SetVal(offset, value);
+				if (rc) { return rc; }
+			} else {
+				rc = node.GetPtr(offset, tmpptr2);
+				if (rc) { return rc; }
+
+				rc = node.SetPtr(offset, pointer);
+				if (rc) { return rc; }
+			}
+
+			//cout << "tmpkey2: " << tmpkey2.data << " tmpptr2: " << tmpptr2 << endl;
+		} else if (hasSwapped) {
+			//cout << "continuing the swap. tmpkey2: " << tmpkey2.data << " tmpvalue2: " << tmpvalue2.data << endl;
+
+			rc = node.SetKey(offset,tmpkey2);
+			if (rc) { return rc; }
+
+			tmpkey2 = tmpkey1;
+
+			if (node.info.nodetype == BTREE_LEAF_NODE) {
+				rc = node.GetVal(offset, tmpvalue1);
+				if (rc) { return rc; }
+
+				rc = node.SetVal(offset, tmpvalue2);
+				if (rc) { return rc; }
+
+				tmpvalue2 = tmpvalue1;
+			} else {
+				rc = node.GetPtr(offset, tmpptr1);
+				if (rc) { return rc; }
+
+				rc = node.SetPtr(offset, tmpptr2);
+				if (rc) { return rc; }
+
+				tmpptr2 = tmpptr1;
+
+				//cout << "tmpptr1: " << tmpptr1 << " tmpptr2: " << tmpptr2 << " tmpkey1: " << tmpkey1.data << " tmpkey2: " << tmpkey2.data << endl;
+			}
+		} else if (tmpkey1 == key) {
+			cout << "tmpkey: " << tmpkey1.data << " key: " << key.data << endl;
+			node.info.numkeys--;
+			return ERROR_CONFLICT;
+		}
+	}
+
+	//cout << "leaving node key insert" << endl;
+	return rc;
+}
+
 ERROR_T BTreeIndex::Create(int nodetype, const KEY_T &key, const VALUE_T &value, SIZE_T &n)
 {
 	BTreeNode p;
@@ -449,57 +667,26 @@ ERROR_T BTreeIndex::Create(int nodetype, const KEY_T &key, const VALUE_T &value,
 
 	rc = p.Unserialize(buffercache,superblock.info.rootnode);
 
-	if (rc!=ERROR_NOERROR) {
-		return rc;
-	}
+	if (rc) { return rc; }
 
-	BTreeNode* node = new BTreeNode(nodetype, p.info.keysize, p.info.valuesize, p.info.blocksize);
+	BTreeNode node = BTreeNode(nodetype, p.info.keysize, p.info.valuesize, p.info.blocksize);
 
 	switch (nodetype) {
 	case BTREE_LEAF_NODE:
-		node->info.numkeys++;
-		node->SetKey(0,key);
-		node->SetVal(0,value);
+		node.info.numkeys++;
+		node.SetKey(0,key);
+		node.SetVal(0,value);
 
 		AllocateNode(n);
 
-		rc = node->Serialize(buffercache,n);
+		rc = node.Serialize(buffercache,n);
 	}
-
-
-
-
-	//BTreeNode c;
-
-	// rc = c.Unserialize(buffercache,blocknum);
-
-	// VALUE_T blah;
-
-	// c.GetVal(0,blah);
-
-	// cout << "val: " << blah.data;
-
-	//b.setKey(1,)
-
-	//cout << "Sup dudes: " << b.info.keysize << " " << b.info.valuesize << " " << b.info.blocksize << " " << b.info.rootnode << " " << b.info.freelist << " " << b.info.numkeys;
-
-	//cout << "Sup dudes: " << blah.data;
-
-
 
 	return rc;
 }
 
-// ERROR_T BTreeIndex::InsertHelper(const SIZE_T &node, const KEY_T &key, const VALUE_T &value)
-// {
-// 	return ERROR_UNIMPL;
-// }
-
 ERROR_T BTreeIndex::Update(const KEY_T &key, const VALUE_T &value)
 {
-	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
-	/*!!! MIGHT BREAK THE "PASSING BY REFERENCE" !!!*/
-	/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
 	VALUE_T temp = (VALUE_T)value;
 	return LookupOrUpdateInternal(superblock.info.rootnode, BTREE_OP_UPDATE, key, temp);
 }
@@ -570,7 +757,8 @@ ERROR_T BTreeIndex::DisplayInternal(const SIZE_T &node,
 	default:
 		if (display_type==BTREE_DEPTH_DOT) {
 		} else {
-			o << "Unsupported Node Type " << b.info.nodetype ;
+			//EVIL SUPPRESSED ERROR for rachel's sanity. :D
+			//o << "Unsupported Node Type " << b.info.nodetype ;
 		}
 		return ERROR_INSANE;
 	}
@@ -602,6 +790,6 @@ ERROR_T BTreeIndex::SanityCheck() const
 
 ostream & BTreeIndex::Print(ostream &os) const
 {
-	superblock.Print(os);
+	Display(os, BTREE_DEPTH_DOT);
 	return os;
 }

@@ -106,9 +106,16 @@ public:
   // return ERROR_CONFLICT if the key already exists and it's a unique index
   ERROR_T Insert(const KEY_T &key, const VALUE_T &value);
 
-  ERROR_T InsertInternal(const SIZE_T &node, const KEY_T &key, const VALUE_T &value);
+  ERROR_T InsertInternal(const SIZE_T &node, const SIZE_T &parent, const KEY_T &key, const VALUE_T &value);
+
+  ERROR_T InsertKeyInternal(BTreeNode &leaf, const KEY_T &key, const VALUE_T &value, const SIZE_T &pointer);
 
   ERROR_T Create(int nodetype, const KEY_T &key, const VALUE_T &value, SIZE_T &n);
+
+  ERROR_T Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T &parent);
+
+  SIZE_T MaxKeysLeaf();
+  SIZE_T MaxKeysInterior();
 
   // return zero on success
   // return ERROR_NONEXISTENT  if the key doesn't exist
