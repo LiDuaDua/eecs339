@@ -374,7 +374,7 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T nodeblock, const SIZE_T &parent,
 	SIZE_T maxKeysLeaf = MaxKeysLeaf() * 2 / 3;
 
 	//increment numkeys in superblock
-	superblock.info.numkeys++;
+	//superblock.info.numkeys++;
 
 	rc = node.Unserialize(buffercache, nodeblock);
 
@@ -489,7 +489,9 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T nodeblock, const SIZE_T &parent,
 		break;
 	case BTREE_LEAF_NODE:
 		cout << "inserting key: " << key.data << " value: " << value.data << " into leaf at block " << nodeblock << endl;
-
+        	//increment numkeys in superblock
+                superblock.info.numkeys++;
+    
 		rc = InsertKeyInternal(node, key, value, 0);
 		if (rc) { return rc; }
 
@@ -872,10 +874,19 @@ ERROR_T BTreeIndex::Display(ostream &o, BTreeDisplayType display_type) const
 	SanityCheck();
 	return ERROR_NOERROR;
 }
+SIZE_T leafKeys = 1;
 
 ERROR_T BTreeIndex::SanityCheck() const {
 	cout<<"Inside of sanitycheck"<<endl;
-	return SanityCheckHelper(superblock.info.rootnode);
+	SIZE_T check = SanityCheckHelper(superblock.info.rootnode);
+	if(leafKeys != superblock.info.numkeys){
+	cout<<"Error. Number of keys in superblock: "<<superblock.info.numkeys<<" does not match number of keys in the leaves: "<<leafKeys<<endl;
+              return ERROR_GENERAL;
+             }
+	else{
+	cout<<"Number of keys in superblock matches number of keys in the leaves"<<endl;
+   }
+	return check;
 }
 
 SIZE_T BTreeIndex::MaxKeysLeafCheck() const
@@ -884,10 +895,9 @@ SIZE_T BTreeIndex::MaxKeysLeafCheck() const
 	return n;
 }
 
-
 ERROR_T BTreeIndex::SanityCheckHelper(const SIZE_T &node) const
 {
-	cout<<"Inside Sanity CheckHelper"<<endl;
+//	cout<<"Inside Sanity CheckHelper"<<endl;
 	KEY_T testkey;
 	KEY_T testkey2;
 	SIZE_T ptr;
@@ -895,7 +905,6 @@ ERROR_T BTreeIndex::SanityCheckHelper(const SIZE_T &node) const
 	ERROR_T rc;
 	SIZE_T offset;
 	SIZE_T maxKeyLeaf=MaxKeysLeafCheck()*2/3;
-	SIZE_T numKeys=0;
 
 	rc=b.Unserialize(buffercache,node);
 	if (rc) { return rc;}
@@ -945,16 +954,19 @@ ERROR_T BTreeIndex::SanityCheckHelper(const SIZE_T &node) const
 				cout<<"Error. Key: "<<testkey.data<<" and Key: "<<testkey2.data<<" are out of order."<<endl;
 				return ERROR_GENERAL;
 			}
+			leafKeys++;		
 		}
-		numKeys=numKeys+b.info.numkeys;
-	}
-	if(numKeys != superblock.info.numkeys){
-		cout<<"Error. Number of keys in superblock do not match number of keys in the leaves"<<endl;
-		return ERROR_GENERAL;
-	}
-	else{
+	//	leafKeys=leafKeys+b.info.numkeys;
 		return ERROR_NOERROR;
 	}
+//	if(leafKeys != superblock.info.numkeys){
+//		cout<<"Error. Number of keys in superblock: "<<superblock.info.numkeys<<" does not match number of keys in the leaves: "<<leafKeys<<endl;
+//		return ERROR_GENERAL;
+//	}
+//	else{
+//		cout<<"Number of keys in superblock match number of keys in the leaves"<<endl;
+//		return ERROR_NOERROR;
+//	}
 }
 
 
