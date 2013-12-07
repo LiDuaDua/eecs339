@@ -378,7 +378,7 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent
 		return rc;
 	}
 
-	Print(ostream);
+	//Print(ostream);
 
 	//cout << "Trying to insert key " << key.data << " and value " << value.data << " at block " << nodeblock << endl;
 
@@ -777,14 +777,92 @@ ERROR_T BTreeIndex::Display(ostream &o, BTreeDisplayType display_type) const
 	if (display_type==BTREE_DEPTH_DOT) {
 		o << "}\n";
 	}
+	SanityCheck();
 	return ERROR_NOERROR;
 }
 
+ERROR_T BTreeIndex::SanityCheck() const {
+	cout<<"Inside of sanitycheck"<<endl;
+	return SanityCheckHelper(superblock.info.rootnode);
+}
 
-ERROR_T BTreeIndex::SanityCheck() const
+SIZE_T BTreeIndex::MaxKeysLeafCheck() const
 {
-	// WRITE ME
-	return ERROR_UNIMPL;
+	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream)) / (superblock.info.keysize + superblock.info.valuesize);
+	return n;
+}
+
+
+ERROR_T BTreeIndex::SanityCheckHelper(const SIZE_T &node) const
+{
+	cout<<"Inside Sanity CheckHelper"<<endl;
+	KEY_T testkey;
+	KEY_T testkey2;
+	SIZE_T ptr;
+	BTreeNode b;
+	ERROR_T rc;
+	SIZE_T offset;
+	SIZE_T maxKeyLeaf=MaxKeysLeafCheck()*2/3;
+	SIZE_T numKeys=0;
+
+	rc=b.Unserialize(buffercache,node);
+	if (rc) { return rc;}
+	
+	switch(b.info.nodetype){
+	case BTREE_ROOT_NODE:
+	case BTREE_INTERIOR_NODE:
+		if(b.info.numkeys>0){
+			//NOTE: When we have the correct insert function  need offset
+			//to be <= to numKeys 
+			cout<<"Number of keys in current node: "<<b.info.numkeys<<endl;
+			for(offset=0;offset<b.info.numkeys;offset++){
+				//cout<<"Offset is: "<<offset<<endl;
+				rc=b.GetPtr(offset,ptr);
+				//cout<<"Ptr is: "<<ptr<<endl;
+				if(rc){return rc;}	
+				rc = SanityCheckHelper(ptr);
+				if(rc){return rc;}
+			}
+		//No keys at all in the node
+		return ERROR_NONEXISTENT;
+		}
+	case BTREE_LEAF_NODE:
+		//Check number of keys to make sure the node isn't too full
+		if(b.info.numkeys > maxKeyLeaf){
+			cout<<"Error. You have too many keys in the leaf"<<endl;
+			return ERROR_NOSPACE;
+		}
+		else{
+			cout<<"YAY! Leaf node has right number key, value pairs"<<endl;
+		}
+		//Now check to make sure that the key value pairs in the leaf 
+		//are in the correct order
+		cout<<"Leaf has: "<<b.info.numkeys<<" number of keys"<<endl;
+		for(offset=0;offset<b.info.numkeys-1;offset++){
+			rc=b.GetKey(offset, testkey);
+			if(rc){return rc;}
+			
+			rc=b.GetKey(offset+1, testkey2);
+			if(rc){return rc;}
+			
+			if(testkey < testkey2){
+				cout<<testkey.data<<" is smaller than " <<testkey2.data<<endl;
+			//	return ERROR_NOERROR;	
+			} 
+			else{
+				cout<<"Error. Key: "<<testkey.data<<" and Key: "<<testkey2.data<<" are out of order."<<endl;
+				return ERROR_GENERAL;
+			}
+		}
+		numKeys=numKeys+b.info.numkeys;		
+	}
+	if(numKeys != superblock.info.numkeys){
+		cout<<"Error. Number of keys in superblock do not match number of keys in the leaves"<<endl;
+		return ERROR_GENERAL;
+	}	
+	else{
+		return ERROR_NOERROR;
+	}	
 }
 
 
