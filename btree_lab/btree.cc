@@ -624,12 +624,15 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 	rc = InsertKeyInternal(parentNode, key, value, n);
 	if (rc) { return rc; }
 
-	// for(offset=0; offset<parentNode.info.numkeys; offset++){
-	// 	parentNode.GetKey(offset, key);
-	// 	parentNode.GetPtr(offset, ptr);
+	for(offset=0; offset<parentNode.info.numkeys; offset++){
+		parentNode.GetKey(offset, key);
+		parentNode.GetPtr(offset, ptr);
 
-	// 	cout << "parent node of split node (block " << parent << "). offset: " << offset << " key: " << key.data << " ptr: " << ptr << endl;
-	// }
+		cout << "parent node of split node (block " << parent << "). offset: " << offset << " key: " << key.data << " ptr: " << ptr << endl;
+	}
+	parentNode.GetPtr(offset, ptr);
+
+	cout << "parent node of split node final ptr: " << ptr << endl;
 
 	rc = parentNode.Serialize(buffercache, parent);
 	if (rc) { return rc; }
@@ -653,25 +656,39 @@ ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const V
 
 	//cout << "pointer: " << pointer << endl;
 
-	node.info.numkeys++;
+	if (node.info.nodetype == BTREE_LEAF_NODE) {
+		node.info.numkeys++;
+	} else {
+		//only increase numkeys in interior node if rightmost pointer exists
+		rc = node.GetPtr(node.info.numkeys, tmpptr1);
+		if (rc) { return rc; }
+
+		if (tmpptr1 > 0) {
+			cout << "increasing numkeys of an interior node" << endl;
+			node.info.numkeys++;
+		}
+	}
+
 	for (offset=0; offset<node.info.numkeys; offset++) {
 		if (!hasSwapped) {
 			rc = node.GetKey(offset,tmpkey1);
 			if (rc) { return rc; }
 		}
 
-		// cout << "in node key insert. offset: " << offset << " tmpkey1: " << tmpkey1.data << " key: " << key.data << " hasSwapped: " << hasSwapped << endl;
+		cout << "in node key insert. offset: " << offset << " tmpkey1: " << tmpkey1.data << " key: " << key.data << " hasSwapped: " << hasSwapped << endl;
 
-		if (!hasSwapped && (!tmpkey1.data || key < tmpkey1 || offset == node.info.numkeys-1)) {
+		if (!hasSwapped && (tmpkey1.data == NULL || key < tmpkey1 || (node.info.nodetype == BTREE_LEAF_NODE && offset == node.info.numkeys-1))) {
 			hasSwapped = true;
 
 			tmpkey2 = tmpkey1;
 
-			// cout << "swapping key over in node" << endl;
+			cout << "swapping key over in node" << endl;
 			//copy the key and value over one offset
 
-			rc = node.SetKey(offset, key);
-			if (rc) { return rc; }
+			//if (node.info.nodetype == BTREE_LEAF_NODE || offset != node.info.numkeys-1) {
+				rc = node.SetKey(offset, key);
+				if (rc) { return rc; }
+			//}
 
 			if (node.info.nodetype == BTREE_LEAF_NODE) {
 				rc = node.GetVal(offset, tmpvalue2);
@@ -689,10 +706,12 @@ ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const V
 
 			//cout << "tmpkey2: " << tmpkey2.data << " tmpptr2: " << tmpptr2 << endl;
 		} else if (hasSwapped) {
-			//cout << "continuing the swap. tmpkey2: " << tmpkey2.data << " tmpvalue2: " << tmpvalue2.data << endl;
+			cout << "continuing the swap. tmpkey2: " << tmpkey2.data << " tmpvalue2: " << tmpvalue2.data << endl;
 
-			rc = node.SetKey(offset,tmpkey2);
-			if (rc) { return rc; }
+			//if (node.info.nodetype == BTREE_LEAF_NODE || offset != node.info.numkeys-1) {
+				rc = node.SetKey(offset, tmpkey2);
+				if (rc) { return rc; }
+			//}
 
 			tmpkey2 = tmpkey1;
 
@@ -721,6 +740,22 @@ ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const V
 			node.info.numkeys--;
 			return ERROR_CONFLICT;
 		}
+	}
+
+	if (node.info.nodetype != BTREE_LEAF_NODE) {
+		// got one more ptr to assign if an interior node
+
+		if (hasSwapped && tmpptr2 > 0) {
+			cout << "interior node. adding one more ptr: " << tmpptr2 << endl;
+			rc = node.SetPtr(offset, tmpptr2);
+			if (rc) { return rc; }
+		} else {
+			cout << "interior node. adding one more ptr: " << pointer << endl;
+			hasSwapped = true;
+			rc = node.SetPtr(offset, pointer);
+			if (rc) { return rc; }
+		}
+
 	}
 
 	if (!hasSwapped) {
