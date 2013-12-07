@@ -9,7 +9,7 @@ $trackseek=1;
 $rotlat=10;
 $cachesize=64;
 
-$maxerr=10;
+$maxerr=20;
 
 $ENV{PATH}.=":.";
 
