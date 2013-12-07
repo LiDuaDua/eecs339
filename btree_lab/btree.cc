@@ -993,7 +993,10 @@ ERROR_T BTreeIndex::SanityCheckHelper(const SIZE_T &node) const
 		}
 	//	leafKeys=leafKeys+b.info.numkeys;
 		return ERROR_NOERROR;
+	default:
+		return ERROR_INSANE;
 	}
+
 //	if(leafKeys != superblock.info.numkeys){
 //		cout<<"Error. Number of keys in superblock: "<<superblock.info.numkeys<<" does not match number of keys in the leaves: "<<leafKeys<<endl;
 //		return ERROR_GENERAL;
