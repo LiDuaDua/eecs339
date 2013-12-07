@@ -359,35 +359,50 @@ ERROR_T BTreeIndex::Lookup(const KEY_T &key, VALUE_T &value)
 
 ERROR_T BTreeIndex::Insert(const KEY_T &key, const VALUE_T &value)
 {
-	return InsertInternal(superblock.info.rootnode, superblock.info.rootnode, key, value);
+	return InsertInternal(superblock.info.rootnode, superblock_index, key, value);
 }
 
-ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent, const KEY_T &key, const VALUE_T &value)
+ERROR_T BTreeIndex::InsertInternal(const SIZE_T nodeblock, const SIZE_T &parent, const KEY_T &key, const VALUE_T &value)
 {
 	BTreeNode node;
 	ERROR_T rc;
 	SIZE_T offset;
 	KEY_T testkey;
+	//VALUE_T val; // <- TMP!
 	SIZE_T ptr;
 	SIZE_T maxKeysInterior = MaxKeysInterior() * 2 / 3;
 	SIZE_T maxKeysLeaf = MaxKeysLeaf() * 2 / 3;
 
+	//increment numkeys in superblock
+	superblock.info.numkeys++;
+
 	rc = node.Unserialize(buffercache, nodeblock);
 
-	if (rc!=ERROR_NOERROR) {
-		return rc;
-	}
+	// cout << endl;
+	// for(offset=0; offset<node.info.numkeys; offset++){
+	// 	node.GetKey(offset, testkey);
+	// 	if (node.info.nodetype != BTREE_LEAF_NODE) {
+	// 		node.GetPtr(offset, ptr);
 
-	Print(ostream);
+	// 		cout << "node at block: " << nodeblock << " at offset: " << offset << " has key: " << testkey.data << " ptr: " << ptr << endl;
+	// 	} else {
+	// 		node.GetVal(offset, val);
 
-	//cout << "Trying to insert key " << key.data << " and value " << value.data << " at block " << nodeblock << endl;
+	// 		cout << "leaf at block: " << nodeblock << " at offset: " << offset << " has key: " << testkey.data << " value: " << val.data << endl;
+	// 	}
+	// }
+	// cout << endl;
+
+	if (rc) { return rc; }
+
+	cout << "Trying to insert key " << key.data << " and value " << value.data << " at block " << nodeblock << endl;
 
 	switch (node.info.nodetype) {
 	case BTREE_ROOT_NODE:
 		//cout << "In root node" << endl;
 		if (node.info.numkeys == 0) {
 			cout << "making leaf node with key: " << key.data << " and value: " << value.data << endl;
-			rc = Create(BTREE_LEAF_NODE, key, value, ptr);
+			rc = Create(BTREE_LEAF_NODE, key, value, 0, ptr);
 			if (rc) { return rc; }
 
 			node.info.numkeys++;
@@ -409,40 +424,71 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent
 				rc = node.GetPtr(offset, ptr);
 				if (rc) { return rc; }
 
-				cout << "found key: " << key.data << " in interior node " << offset << ", recursing" << endl;
+				cout << "found key: " << key.data << " < " << testkey.data << " in interior node offset " << offset << ", recursing into block " << ptr << endl;
 				rc = InsertInternal(ptr, nodeblock, key, value);
 				if (rc) { return rc; }
 
-				//inserted successfully. check that node didn't grow too large
-				if (node.info.numkeys < maxKeysInterior) {
-					return rc;
-				} else {
-					cout << "splitting an interior node" << endl;
-					rc = Split(node, nodeblock, parent);
-
-					return rc;
-				}
+				break;
 			} else if (key == testkey) {
+				superblock.info.numkeys--;
 				return ERROR_CONFLICT;
 			}
 		}
 
-		// no key was less than or equal to the key we're inserting. Better add a ptr if there's room
-		rc = Create(BTREE_LEAF_NODE, key, value, ptr);
-		if (rc) { return rc; }
+		// no key was less than or equal to the key we're inserting. try the last pointer if there is one
+		if (offset == node.info.numkeys) {
+			rc = node.GetPtr(offset, ptr);
+			if (rc) { return rc; }
 
-		cout << "Making leaf node into block: " << ptr << " offset: " << offset << endl;
+			if (ptr && ptr > 0) {
+				cout << "found a node at the last pointer, key > " << key.data << ", offset: " << offset << ", recursing" << endl;
 
-		node.info.numkeys++;
-		rc = node.SetKey(offset, key);
-		if (rc) { return rc; }
+				rc = InsertInternal(ptr, nodeblock, key, value);
+				if (rc) { return rc; }
+			} else {
+				// there isn't a pointer to a node at the end. let's add one.
+				rc = Create(BTREE_LEAF_NODE, key, value, 0, ptr); // <- note: ptr is being redefined
+				if (rc) { return rc; }
 
-		rc = node.SetPtr(offset, ptr);
-		if (rc) { return rc; }
+				cout << "Making leaf node into block: " << ptr << " offset: " << offset << endl;
 
-		rc = node.Serialize(buffercache, nodeblock);
+				rc = node.SetPtr(offset, ptr);
+				if (rc) { return rc; }
 
-		return rc;
+				cout << "serializing after making new ptr" << endl;
+				rc = node.Serialize(buffercache, nodeblock);
+			}
+		}
+
+		//inserted successfully. check that node didn't grow too large
+		if (node.info.numkeys <= maxKeysInterior) {
+			return rc;
+		} else if (node.info.nodetype == BTREE_ROOT_NODE) {
+			cout << "splitting the root node" << endl;
+
+			rc = node.GetKey(node.info.numkeys-1, testkey);
+			if (rc) { return rc; }
+
+			rc = Create(BTREE_ROOT_NODE, testkey, value, superblock.info.rootnode, ptr);
+			if (rc) { return rc; }
+
+			rc = node.Unserialize(buffercache, nodeblock);
+			if (rc) { return rc; }
+
+			cout << "hopefully made a root node. at block " << superblock.info.rootnode << " this node (" << nodeblock << ") is now of type " << node.info.nodetype << endl;
+
+			rc = Split(node, nodeblock, superblock.info.rootnode);
+
+			return rc;
+		} else {
+			cout << "splitting an interior node" << endl;
+			rc = Split(node, nodeblock, parent);
+			if (rc) { return rc; }
+
+			return node.Serialize(buffercache, nodeblock);
+		}
+
+		break;
 	case BTREE_LEAF_NODE:
 		cout << "inserting key: " << key.data << " value: " << value.data << " into leaf at block " << nodeblock << endl;
 
@@ -452,7 +498,7 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent
 		rc = node.Serialize(buffercache, nodeblock);
 		if (rc) { return rc; }
 
-		if (node.info.numkeys < maxKeysLeaf) {
+		if (node.info.numkeys <= maxKeysLeaf) {
 			//under the limit of keys. carry on
 			return rc;
 		} else {
@@ -473,13 +519,13 @@ ERROR_T BTreeIndex::InsertInternal(const SIZE_T &nodeblock, const SIZE_T &parent
 
 SIZE_T BTreeIndex::MaxKeysLeaf()
 {
-	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream)) / (superblock.info.keysize + superblock.info.valuesize);
+	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream) - superblock.info.valuesize) / (superblock.info.keysize + superblock.info.valuesize);
 	return n;
 }
 
 SIZE_T BTreeIndex::MaxKeysInterior()
 {
-	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream)) / (superblock.info.keysize + sizeof(SIZE_T));
+	SIZE_T n = (superblock.info.blocksize - 10 * sizeof(SIZE_T) - sizeof(ostream) - sizeof(SIZE_T)) / (superblock.info.keysize + sizeof(SIZE_T));
 	return n;
 }
 
@@ -494,8 +540,11 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 	SIZE_T ptr;
 	SIZE_T n;
 	BTreeNode parentNode;
+	bool hasRightmostPointer = false;
 
 	cout << "In split function" << endl;
+	// node.GetKey(node.info.numkeys-1, key);
+	// cout << "the old largest key is " << key.data << endl;
 
 	//clone node
 	BTreeNode clone = BTreeNode(node);
@@ -529,6 +578,8 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 		}
 	}
 
+	//cout << "this should still be that key: " << key.data << endl;
+
 	clone.info.numkeys = numkeysClone;
 
 	AllocateNode(n);
@@ -539,6 +590,12 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 	rc = parentNode.Unserialize(buffercache, parent);
 	if (rc) { return rc; }
 
+	//check if parent has a rightmost pointer
+	rc = parentNode.GetPtr(parentNode.info.numkeys, ptr);
+	if (rc) { return rc; }
+
+	if (ptr && ptr > 0) { hasRightmostPointer = true; }
+
 	//search for old key in parent and replace it with node's largest key
 	for (offset=0; offset<parentNode.info.numkeys; offset++) {
 		rc = parentNode.GetKey(offset, testkey);
@@ -548,7 +605,7 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 			rc = node.GetKey(node.info.numkeys-1, testkey);
 			if (rc) { return rc; }
 
-			cout << "testkey replacing old key-ptr: " << testkey.data << endl;
+			cout << "replacing old key-ptr with " << testkey.data << endl;
 
 			rc = parentNode.SetKey(offset, testkey);
 			if (rc) { return rc; }
@@ -558,12 +615,23 @@ ERROR_T BTreeIndex::Split(BTreeNode &node, const SIZE_T &nodeblock, const SIZE_T
 
 	}
 
-	parentNode.info.numkeys++;
-	rc = parentNode.SetKey(parentNode.info.numkeys-1, key);
+	// parentNode.info.numkeys++;
+	// rc = parentNode.SetKey(parentNode.info.numkeys-1, key);
+
+	// rc = parentNode.SetPtr(parentNode.info.numkeys-1, n);
+	// if (rc) { return rc; }
+
+	cout << "clones allocated block: " << n << " whose key should be " << key.data << endl;
+
+	rc = InsertKeyInternal(parentNode, key, value, n);
 	if (rc) { return rc; }
 
-	rc = parentNode.SetPtr(parentNode.info.numkeys-1, n);
-	if (rc) { return rc; }
+	// for(offset=0; offset<parentNode.info.numkeys; offset++){
+	// 	parentNode.GetKey(offset, key);
+	// 	parentNode.GetPtr(offset, ptr);
+
+	// 	cout << "parent node of split node (block " << parent << "). offset: " << offset << " key: " << key.data << " ptr: " << ptr << endl;
+	// }
 
 	rc = parentNode.Serialize(buffercache, parent);
 	if (rc) { return rc; }
@@ -594,14 +662,14 @@ ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const V
 			if (rc) { return rc; }
 		}
 
-		//cout << "in node key insert. offset: " << offset << " tmpkey1: " << tmpkey1.data << " key: " << key.data << endl;
+		// cout << "in node key insert. offset: " << offset << " tmpkey1: " << tmpkey1.data << " key: " << key.data << " hasSwapped: " << hasSwapped << endl;
 
-		if (key < tmpkey1 && !hasSwapped) {
+		if (!hasSwapped && (!tmpkey1.data || key < tmpkey1 || offset == node.info.numkeys-1)) {
 			hasSwapped = true;
 
 			tmpkey2 = tmpkey1;
 
-			//cout << "swapping key over in node" << endl;
+			// cout << "swapping key over in node" << endl;
 			//copy the key and value over one offset
 
 			rc = node.SetKey(offset, key);
@@ -647,39 +715,65 @@ ERROR_T BTreeIndex::InsertKeyInternal(BTreeNode &node, const KEY_T &key, const V
 
 				tmpptr2 = tmpptr1;
 
-				//cout << "tmpptr1: " << tmpptr1 << " tmpptr2: " << tmpptr2 << " tmpkey1: " << tmpkey1.data << " tmpkey2: " << tmpkey2.data << endl;
+				// cout << "tmpptr1: " << tmpptr1 << " tmpptr2: " << tmpptr2 << " tmpkey1: " << tmpkey1.data << " tmpkey2: " << tmpkey2.data << endl;
 			}
 		} else if (tmpkey1 == key) {
 			cout << "tmpkey: " << tmpkey1.data << " key: " << key.data << endl;
+			superblock.info.numkeys--;
 			node.info.numkeys--;
 			return ERROR_CONFLICT;
 		}
+	}
+
+	if (!hasSwapped) {
+		cout << "Whoah! You entered insert and never swapped around keys, values or ptrs!" << endl;
+		return ERROR_INSANE;
 	}
 
 	//cout << "leaving node key insert" << endl;
 	return rc;
 }
 
-ERROR_T BTreeIndex::Create(int nodetype, const KEY_T &key, const VALUE_T &value, SIZE_T &n)
+ERROR_T BTreeIndex::Create(int nodetype, const KEY_T &key, const VALUE_T &value, const SIZE_T &pointer, SIZE_T &n)
 {
-	BTreeNode p;
+	BTreeNode root;
 	ERROR_T rc;
 
-	rc = p.Unserialize(buffercache,superblock.info.rootnode);
+	rc = root.Unserialize(buffercache,superblock.info.rootnode);
 
 	if (rc) { return rc; }
 
-	BTreeNode node = BTreeNode(nodetype, p.info.keysize, p.info.valuesize, p.info.blocksize);
+	BTreeNode node = BTreeNode(nodetype, root.info.keysize, root.info.valuesize, root.info.blocksize);
 
 	switch (nodetype) {
-	case BTREE_LEAF_NODE:
+	case BTREE_ROOT_NODE:
 		node.info.numkeys++;
-		node.SetKey(0,key);
-		node.SetVal(0,value);
+		node.SetKey(0, key);
+		node.SetPtr(0, pointer);
 
 		AllocateNode(n);
 
-		rc = node.Serialize(buffercache,n);
+		rc = node.Serialize(buffercache, n);
+		if (rc) { return rc; }
+
+		root.info.nodetype = BTREE_INTERIOR_NODE;
+
+		rc = root.Serialize(buffercache, superblock.info.rootnode);
+		if (rc) { return rc; }
+
+		superblock.info.rootnode = n;
+
+		rc = superblock.Serialize(buffercache, superblock_index);
+		break;
+	case BTREE_LEAF_NODE:
+		node.info.numkeys++;
+		node.SetKey(0, key);
+		node.SetVal(0, value);
+
+		AllocateNode(n);
+
+		rc = node.Serialize(buffercache, n);
+		break;
 	}
 
 	return rc;

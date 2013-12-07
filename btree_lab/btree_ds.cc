@@ -97,6 +97,7 @@ BTreeNode & BTreeNode::operator=(const BTreeNode &rhs)
 
 ERROR_T BTreeNode::Serialize(BufferCache *b, const SIZE_T blocknum) const
 {
+  //cout << "Serializing block " << blocknum << endl;
   assert((unsigned)info.blocksize==b->GetBlockSize());
 
   Block block(sizeof(info)+info.GetNumDataBytes());
