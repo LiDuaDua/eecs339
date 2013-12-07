@@ -4,7 +4,7 @@
 # not for performance testing.
 $diskstem="__test";
 $numblocks=1024;
-$blocksize=1024;
+$blocksize=400;
 $heads=1;
 $blockspertrack=1024;
 $tracks=1;
